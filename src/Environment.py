@@ -16,10 +16,10 @@ class ManhattanWaterworld:
 
     ---
     :param
-    grid_vertices_shape: a tuple defining the shape of grid vertices
+    grid_vertices_shape: a tuple defining the shape of grid vertices; note that the vertices follow ij indexing
     cell_scale: width and length of a cell
-    robot_area: bottom left and top right vertices of a rectangular area; all the rest area will be infeasible
-    landmark_area: bottom left and top right vertices of a rectangular area; all the rest area will be feasible
+    robot_area: top left and bottom right vertices of a rectangular area; all the rest area will be infeasible
+    landmark_area: top left and bottom right vertices of a rectangular area; all the rest area will be feasible
     """
     def __init__(self, grid_vertices_shape: tuple = (9,9),
                  cell_scale: int = 1,
@@ -44,30 +44,34 @@ class ManhattanWaterworld:
         if robot_area is not None:
             # ensure a rectangular feasible area for robot
             bl, tr = robot_area
-            self._robot_feasibility = np.zeros((self._x_pts, self._y_pts))
-            self._robot_feasibility[bl[0]:tr[0]+1,bl[1]:tr[1]+1] = 1
-            self._landmark_feasibility = np.ones((self._x_pts, self._y_pts))
-            self._landmark_feasibility[bl[0]:tr[0]+1,bl[1]:tr[1]+1] = 0
+            self._robot_feasibility = np.zeros((self._x_pts, self._y_pts), dtype=bool)
+            self._robot_feasibility[bl[0]:tr[0]+1,bl[1]:tr[1]+1] = True
+            self._landmark_feasibility = np.ones((self._x_pts, self._y_pts), dtype=bool)
+            self._landmark_feasibility[bl[0]:tr[0]+1,bl[1]:tr[1]+1] = False
         elif landmark_area is not None:
             # ensure a rectangular feasible area for landmarks
             bl, tr = landmark_area
-            self._landmark_feasibility = np.zeros((self._x_pts, self._y_pts))
-            self._landmark_feasibility[bl[0]:tr[0]+1, bl[1]:tr[1]+1] = 1
-            self._robot_feasibility = np.ones((self._x_pts, self._y_pts))
-            self._robot_feasibility[bl[0]:tr[0]+1, bl[1]:tr[1]+1] = 0
+            self._landmark_feasibility = np.zeros((self._x_pts, self._y_pts), dtype=bool)
+            self._landmark_feasibility[bl[0]:tr[0]+1, bl[1]:tr[1]+1] = True
+            self._robot_feasibility = np.ones((self._x_pts, self._y_pts), dtype=bool)
+            self._robot_feasibility[bl[0]:tr[0]+1, bl[1]:tr[1]+1] = False
         else:
-            self._landmark_feasibility = np.zeros((self._x_pts, self._y_pts))
-            self._robot_feasibility = np.ones((self._x_pts, self._y_pts))
+            self._landmark_feasibility = np.zeros((self._x_pts, self._y_pts), dtype=bool)
+            self._robot_feasibility = np.ones((self._x_pts, self._y_pts), dtype=bool)
 
     def set_robot_area_feasibility(self,area: List[tuple], feasibility: Union[bool, int]):
+        mask = np.zeros((self._x_pts, self._y_pts), dtype=bool)
         bl, tr = area
-        self._robot_feasibility[bl[0]:tr[0], bl[1]:tr[1]] = feasibility
-        self._landmark_feasibility[bl[0]:tr[0], bl[1]:tr[1]] = not feasibility
+        mask[bl[0]:tr[0]+1, bl[1]:tr[1]+1] = True
+        self._robot_feasibility[mask] = feasibility
+        self._robot_feasibility[np.invert(mask)] = not feasibility
 
     def set_landmark_area_feasibility(self,area: List[tuple], feasibility: Union[bool, int]):
+        mask = np.zeros((self._x_pts, self._y_pts), dtype=bool)
         bl, tr = area
-        self._landmark_feasibility[bl[0]:tr[0], bl[1]:tr[1]] = feasibility
-        self._robot_feasibility[bl[0]:tr[0], bl[1]:tr[1]] = not feasibility
+        mask[bl[0]:tr[0]+1, bl[1]:tr[1]+1] = True
+        self._landmark_feasibility[mask] = feasibility
+        self._landmark_feasibility[np.invert(mask)] = not feasibility
 
     def get_neighboring_vertices(self, i: int, j: int)->List[tuple]:
         candidate_vertices = [(i+1,j), (i,j+1),  (i-1,j),  (i,j-1)]
@@ -91,6 +95,17 @@ class ManhattanWaterworld:
             if self._robot_feasibility[vertex[0], vertex[1]]:
                 feasible_pts.append(vertex)
         return feasible_pts
+
+    def coordinate2vertex(self,x, y)->tuple:
+        i, dx, x_close = find_nearest(self._x_coords, x)
+        j, dy, y_close = find_nearest(self._y_coords, y)
+        if abs(dx) <self._tol and abs(dy) <self._tol:
+            return (i, j)
+        else:
+            raise ValueError("The input ("+str(x)+", "+str(y)+") is off grid vertices.")
+
+    def coordinates2vertices(self, coords: List[tuple])->List[tuple]:
+        return [self.coordinate2vertex(*c) for c in coords]
 
     def nearest_robot_vertex_coordinates(self, x, y)->List[tuple]:
         i, dx, x_close = find_nearest(self._x_coords, x)
@@ -180,6 +195,9 @@ class ManhattanWaterworld:
     def vertex2coordinate(self, i: int, j: int)->tuple:
         return (self._xv[i, j], self._yv[i, j])
 
+    def vertices2coordinates(self, vs)->List[tuple]:
+        return [self.vertex2coordinate(*v) for v in vs]
+
     def is_xy_on_robot_grid(self, x, y):
         # if x and y is on the grid and within the robot area
         # its nearest points in the area should be more than two.
@@ -252,12 +270,12 @@ class ManhattanWaterworld:
         return self._scale
 
     @property
-    def robots(self)->set:
-        return set([agent for agent in self._rbt2pose])
+    def robots(self)->List:
+        return [agent for agent in self._rbt2pose]
 
     @property
-    def landmarks(self)->set:
-        return set([agent for agent in self._lmk2point])
+    def landmarks(self)->List:
+        return [agent for agent in self._lmk2point]
 
     def __str__(self):
         line = ''

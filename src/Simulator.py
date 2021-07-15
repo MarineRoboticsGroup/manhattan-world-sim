@@ -16,7 +16,7 @@ class ManhattanSimulator:
     def add_landmark(self, agent, i, j):
         self._env.add_landmark(agent, i, j)
 
-    def add
+    # def add
 
     def iterate(self):
         for rbt in self._env.robots:

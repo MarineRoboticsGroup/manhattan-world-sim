@@ -67,5 +67,32 @@ class ManhattanWaterworldTestCase(unittest.TestCase):
                 self.assertTrue(env.reset_robot('rbt1', 0, 0))
                 self.assertTrue(env.update_robot_pose('rbt1', SE2Pose(0,0,-np.pi)))
 
+    def test_vertices_coordinates(self):
+        env = ManhattanWaterworld(self.size, self.scale, [self.bl,self.tr])
+        self.assertTrue(env.add_robot('rbt3', self.bl[0],self.bl[1]))
+        gt_rbt_v = [(self.bl[0], self.bl[1]+1),(self.bl[0]+1,self.bl[1])]
+        gt_nb_v = [(self.bl[0], self.bl[1]+1),
+                   (self.bl[0]+1,self.bl[1]),
+                   (self.bl[0]-1,self.bl[1]),
+                   (self.bl[0],self.bl[1]-1)]
+        self.assertCountEqual(env.vertices2coordinates(gt_rbt_v),
+                              env.nearest_robot_vertex_coordinates(*env.vertex2coordinate(*self.bl)))
+        self.assertCountEqual(gt_nb_v, env.get_neighboring_vertices(*self.bl))
+        self.assertCountEqual(gt_rbt_v, env.get_neighboring_robot_vertices(*self.bl))
+        
+        near_coords  = env.nearest_robot_vertex_coordinates(*env.vertex2coordinate(*self.bl))
+        self.assertCountEqual(gt_rbt_v, env.coordinates2vertices(near_coords))
+
+    def test_set_feasible_area(self):
+        env = ManhattanWaterworld(self.size, self.scale, [self.bl,self.tr])
+        env.set_robot_area_feasibility([self.bl,self.tr],True)
+        env.set_landmark_area_feasibility([(self.bl[0]-1,self.bl[1]-1),(self.tr[0]+1,self.tr[1]+1)],False)
+        rbt_feasible = np.zeros(self.size, dtype=bool)
+        rbt_feasible[self.bl[0]:self.tr[0] + 1, self.bl[1]:self.tr[1] + 1] = True
+
+        test.assert_array_equal(rbt_feasible, env.robot_feasibility)
+        lmk_feasible = np.ones(self.size, dtype=bool)
+        lmk_feasible[self.bl[0]-1:self.tr[0]+2,self.bl[1]-1:self.tr[1]+2] = False
+        test.assert_array_equal(lmk_feasible, env.landmark_feasibility)
 if __name__ == '__main__':
     unittest.main()
