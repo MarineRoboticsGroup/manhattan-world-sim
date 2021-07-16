@@ -3,6 +3,7 @@ from copy import deepcopy
 import numpy as np
 from typing import Tuple, List, Union
 
+from Agent import GridRobot, GridBeacon
 from geometry.TwoDimension import SE2Pose, Point2
 
 def find_nearest(array, value):
@@ -146,7 +147,7 @@ class ManhattanWaterworld:
         else:
             return True
 
-    def add_landmark(self, lmk, i, j):
+    def add_landmark(self, lmk: GridBeacon, i: int, j: int):
         if self._landmark_feasibility[i, j] and lmk not in self._lmk2point:
             x, y = self.vertex2coordinate(i, j)
             if not self._lmk2point or self.no_collision(x, y, self._lmk2point):
@@ -162,7 +163,7 @@ class ManhattanWaterworld:
             print('Add abort: vertex ('+str(i)+', '+str(j)+') is infeasible for adding landmarks.')
             return False
 
-    def add_robot(self, rbt, i, j, orientation = 0):
+    def add_robot(self, rbt: GridRobot, i = int, j = int, orientation = 0):
         if self._robot_feasibility[i, j] and rbt not in self._rbt2pose:
             x, y = self.vertex2coordinate(i, j)
             if not self._rbt2pose or self.no_collision(x, y, self._rbt2pose):
