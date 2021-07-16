@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import numpy as np
 from typing import Tuple, List, Union
 
@@ -81,33 +83,20 @@ class ManhattanWaterworld:
                 vertices_in_bound.append(vertex)
         return vertices_in_bound
 
-    def get_neighboring_robot_vertices(self, i: int, j: int)->List[tuple]:
+    def get_neighboring_robot_vertices(self, i: int, j: int, feasibility = None)->List[tuple]:
         nb_pts = self.get_neighboring_vertices(i, j)
-        feasible_pts = []
-        for vertex in nb_pts:
-            if self._robot_feasibility[vertex[0], vertex[1]]:
-                feasible_pts.append(vertex)
-        return feasible_pts
+        return self.pick_robot_vertices(nb_pts, feasibility)
 
-    def pick_robot_vertices(self, vertices)->List[tuple]:
+    def pick_robot_vertices(self, vertices, feasibility:np.ndarray = None)->List[tuple]:
         feasible_pts = []
+        if feasibility is None:
+            feasibility = self._robot_feasibility
         for vertex in vertices:
-            if self._robot_feasibility[vertex[0], vertex[1]]:
+            if feasibility[vertex[0], vertex[1]]:
                 feasible_pts.append(vertex)
         return feasible_pts
 
-    def coordinate2vertex(self,x, y)->tuple:
-        i, dx, x_close = find_nearest(self._x_coords, x)
-        j, dy, y_close = find_nearest(self._y_coords, y)
-        if abs(dx) <self._tol and abs(dy) <self._tol:
-            return (i, j)
-        else:
-            raise ValueError("The input ("+str(x)+", "+str(y)+") is off grid vertices.")
-
-    def coordinates2vertices(self, coords: List[tuple])->List[tuple]:
-        return [self.coordinate2vertex(*c) for c in coords]
-
-    def nearest_robot_vertex_coordinates(self, x, y)->List[tuple]:
+    def nearest_robot_vertex_coordinates(self, x: float, y: float, feasibility: np.ndarray = None)->List[tuple]:
         i, dx, x_close = find_nearest(self._x_coords, x)
         j, dy, y_close = find_nearest(self._y_coords, y)
         if abs(dx) <self._tol and abs(dy) <self._tol:
@@ -124,8 +113,19 @@ class ManhattanWaterworld:
                 goal_vertices = [(i, j), (i, j - 1)]
         else:
             raise ValueError("The robot with location ("+str(x),', '+str(y)+') falls off the grid.')
-        goal_vertices = self.pick_robot_vertices(goal_vertices)
+        goal_vertices = self.pick_robot_vertices(goal_vertices, feasibility)
         return [self.vertex2coordinate(*vertex) for vertex in goal_vertices]
+
+    def coordinate2vertex(self,x, y)->tuple:
+        i, dx, x_close = find_nearest(self._x_coords, x)
+        j, dy, y_close = find_nearest(self._y_coords, y)
+        if abs(dx) <self._tol and abs(dy) <self._tol:
+            return (i, j)
+        else:
+            raise ValueError("The input ("+str(x)+", "+str(y)+") is off grid vertices.")
+
+    def coordinates2vertices(self, coords: List[tuple])->List[tuple]:
+        return [self.coordinate2vertex(*c) for c in coords]
 
     def agent_xy(self, agent2gt):
         return np.array([[pt.x, pt.y] for key, pt in agent2gt.items()])
@@ -286,6 +286,91 @@ class ManhattanWaterworld:
         line += 'Robots: '+self._rbt2pose.__repr__() +'\n'
         line += 'Landmarks: '+self._lmk2point.__repr__() +'\n'
         return line
+
+    def robot_edge_path(self, feasiblity = None, start_point: tuple = None)->List[tuple]:
+        # the default direction is counter-clockwise
+        next_wps = []
+        # get a list of waypoints along the edge of feasible area
+        if feasiblity is None:
+            feasiblity = deepcopy(self.robot_feasibility)
+
+        edge_pts = set()
+        feasible_pts = np.array(np.where(feasiblity)).T
+        # compute edge points first and then consider their order
+        for pt in feasible_pts:
+            nb_pts = self.get_neighboring_robot_vertices(*pt, feasibility=feasiblity)
+            if len(nb_pts) < 4:
+                edge_pts.add((pt[0], pt[1]))
+
+        if start_point is None:
+            # take the top left vertex as the start point
+            for i in range(feasiblity.shape[0]):
+                if start_point is not None:
+                    break
+                for j in range(feasiblity.shape[1]):
+                    if feasiblity[i, j]:
+                        start_point = (i, j)
+                        break
+        next_wps.append(start_point)
+
+        counterclock_nb = [(1,0),(0,1),(-1,0),(0,-1)]
+
+        while True:
+            cur_point = next_wps[-1]
+            i, j = cur_point
+            feasiblity[i, j] = False
+            feas_rbt_pts = self. \
+                get_neighboring_robot_vertices(i, j, feasiblity)
+            if len(feas_rbt_pts) > 0:
+                pts_degree = np.array([len(self.get_neighboring_robot_vertices(*pt, feasibility=feasiblity))
+                                       for pt in feas_rbt_pts])
+                min_degree_idx = np.where(pts_degree == np.amin(pts_degree))[0]
+                next_pt_idx = 0
+                least_order = np.inf
+                for idx in min_degree_idx:
+                    diff_vec = (feas_rbt_pts[idx][0]-i,feas_rbt_pts[idx][1]-j)
+                    cur_order = counterclock_nb.index(diff_vec)
+                    if cur_order < least_order:
+                        least_order = cur_order
+                        next_pt_idx = idx
+                next_wps.append(feas_rbt_pts[next_pt_idx])
+                if len(next_wps) == len(edge_pts):
+                    if set(next_wps) == edge_pts:
+                        if start_point in set(self.get_neighboring_vertices(*next_wps[-1])):
+                            next_wps.append(start_point)
+                            break
+                        else:
+                            raise ValueError("Edge points cannot form a loop.")
+                    else:
+                        raise ValueError("Non-edge vertices are added.")
+            else:
+                break
+        return next_wps
+
+    def robot_lawn_mower(self, feasiblity = None)->List[tuple]:
+        # the default direction is counter-clockwise
+        next_wps = []
+        # get a list of waypoints along the edge of feasible area
+        if feasiblity is None:
+            feasiblity = deepcopy(self.robot_feasibility)
+
+        inverse_i = False
+        for j in range(feasiblity.shape[1]):
+            if feasiblity[:,j].any():
+                indices = np.where(feasiblity[:,j])[0]
+                if not inverse_i:
+                    for i in indices:
+                        next_wps.append((i,j))
+                else:
+                    for i in indices[::-1]:
+                        next_wps.append((i,j))
+                inverse_i = not inverse_i
+        return next_wps
+
+    def plaza1_path(self)->List[tuple]:
+        edge_path = self.robot_edge_path()
+        lawn_mower = self.robot_lawn_mower()
+        return edge_path[:-1] + lawn_mower
 
 class ManhattanWorld(ManhattanWaterworld):
     """

@@ -94,5 +94,39 @@ class ManhattanWaterworldTestCase(unittest.TestCase):
         lmk_feasible = np.ones(self.size, dtype=bool)
         lmk_feasible[self.bl[0]-1:self.tr[0]+2,self.bl[1]-1:self.tr[1]+2] = False
         test.assert_array_equal(lmk_feasible, env.landmark_feasibility)
+
+    def test_edge_path(self):
+        env = ManhattanWaterworld((6,6), 1, [(2,2), (3,3)])
+        wpts = env.robot_edge_path()
+        gt_wpts = [(2,2),(3,2),(3,3),(2,3),(2,2)]
+        self.assertEqual(wpts, gt_wpts)
+
+        wpts2 = env.robot_edge_path(start_point=(3,2))
+        gt_wpts = [(3,2),(3,3),(2,3),(2,2),(3,2)]
+        self.assertEqual(wpts2, gt_wpts)
+
+        env = ManhattanWaterworld((6,6), 1, [(1,1), (3,3)])
+        wpts = env.robot_edge_path()
+        gt_wpts = [(1,1),(2,1),(3,1),(3,2),(3,3),(2,3),(1,3),(1,2),(1,1)]
+        self.assertEqual(wpts, gt_wpts)
+
+    def test_lawn_mower_path(self):
+        env = ManhattanWaterworld((6,6), 1, [(2,2), (3,3)])
+        wpts = env.robot_lawn_mower()
+        gt_wpts = [(2,2),(3,2),(3,3),(2,3)]
+        self.assertEqual(wpts, gt_wpts)
+
+        env = ManhattanWaterworld((6,6), 1, [(1,1), (3,3)])
+        wpts = env.robot_lawn_mower()
+        gt_wpts = [(1,1),(2,1),(3,1),(3,2),(2,2),(1,2),(1,3),(2,3),(3,3)]
+        self.assertEqual(wpts, gt_wpts)
+
+    def test_plaza1_path(self):
+        env = ManhattanWaterworld((6,6), 1, [(1,1), (3,3)])
+        wpts = env.plaza1_path()
+        gt_wpts = [(1,1),(2,1),(3,1),(3,2),(3,3),(2,3),(1,3),(1,2),
+                   (1,1),(2,1),(3,1),(3,2),(2,2),(1,2),(1,3),(2,3),(3,3)]
+        self.assertEqual(wpts, gt_wpts)
+
 if __name__ == '__main__':
     unittest.main()
