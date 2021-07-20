@@ -6,11 +6,14 @@ _RAD_TO_DEG_FACTOR = 180.0 / np.pi
 _DEG_TO_RAD_FACTOR = np.pi / 180.0
 _TWO_PI = 2 * np.pi
 
+
 def none_to_zero(x) -> "x":
     return 0.0 if x is None else x
 
+
 def theta_to_pipi(theta):
     return (theta + np.pi) % _TWO_PI - np.pi
+
 
 class Point2(object):
     dim = 2
@@ -22,12 +25,10 @@ class Point2(object):
         """
         self._x = none_to_zero(x)
         self._y = none_to_zero(y)
-        assert np.isscalar(self._x) and \
-               np.isscalar(self._y)
+        assert np.isscalar(self._x) and np.isscalar(self._y)
 
     @classmethod
-    def by_array(cls, other: Union[List[float], Tuple[float], np.ndarray]
-                 ) -> "Point2":
+    def by_array(cls, other: Union[List[float], Tuple[float], np.ndarray]) -> "Point2":
         return cls(other[0], other[1])
 
     @staticmethod
@@ -188,8 +189,7 @@ class Rot2(object):
         : np.array([ [self.cos, -self.sin],
                      [self.sin,  self.cos]])
         """
-        return cls() if matrix is None else cls(math.atan2(matrix[1, 0],
-                                                           matrix[0, 0]))
+        return cls() if matrix is None else cls(math.atan2(matrix[1, 0], matrix[0, 0]))
 
     @classmethod
     def exp_map(cls, vector: np.array = None) -> "Rot2":
@@ -204,8 +204,9 @@ class Rot2(object):
     @staticmethod
     def dist(x1: np.ndarray, x2: np.ndarray):
         """chordal distance between x1 and x2 which are np.ndarray forms of Rot2"""
-        return np.linalg.norm((Rot2.by_array(x1).inverse() *
-                        Rot2.by_array(x2)).log_map())
+        return np.linalg.norm(
+            (Rot2.by_array(x1).inverse() * Rot2.by_array(x2)).log_map()
+        )
 
     def log_map(self):
         """
@@ -231,8 +232,7 @@ class Rot2(object):
 
     @property
     def matrix(self):
-        return np.array([[self.cos, -self.sin],
-                         [self.sin, self.cos]])
+        return np.array([[self.cos, -self.sin], [self.sin, self.cos]])
 
     def set_theta(self, theta: float = None) -> "Rot2":
         if theta is not None:
@@ -265,8 +265,7 @@ class Rot2(object):
         """
         return self.inverse() * global_pt
 
-    def __mul__(self, other: Union["Rot2", "Point2"]
-                ) -> Union["Rot2", "Point2"]:
+    def __mul__(self, other: Union["Rot2", "Point2"]) -> Union["Rot2", "Point2"]:
         if isinstance(other, Rot2):
             return Rot2(self.theta + other.theta)
         elif isinstance(other, Point2):
@@ -308,13 +307,14 @@ class Rot2(object):
 class SE2Pose(object):
     rot_pi_2 = Rot2(np.pi / 2)
     dim = 3
-    def __init__(self, x: float = None, y: float = None, theta: float = None
-                 ) -> None:
+
+    def __init__(self, x: float = None, y: float = None, theta: float = None) -> None:
         """
         Create a 2D pose
         : theta is in radians
         : _theta should be in [-pi, pi] as a state
         """
+        assert x is not None and y is not None and theta is not None
         self._point = Point2(x=x, y=y)
         self._rot = Rot2(theta=theta)
 
@@ -348,9 +348,7 @@ class SE2Pose(object):
         assert len(vector) == 3
         w = vector[2]
         if abs(w) < 1e-10:
-            return SE2Pose(vector[0],
-                           vector[1],
-                           w)
+            return SE2Pose(vector[0], vector[1], w)
         else:
             pt = Point2(vector[0], vector[1])
             w_rot = Rot2(w)
@@ -359,15 +357,15 @@ class SE2Pose(object):
             return cls(x=t.x, y=t.y, theta=w)
 
     @classmethod
-    def by_array(cls, other: Union[List[float], Tuple[float], np.ndarray]
-                 ) -> "SE2Pose":
+    def by_array(cls, other: Union[List[float], Tuple[float], np.ndarray]) -> "SE2Pose":
         return cls(other[0], other[1], other[2])
 
     @staticmethod
     def dist(x1: np.ndarray, x2: np.ndarray):
         """chordal distance between x1 and x2 which are np.ndarray forms of SE2 poses"""
-        return np.linalg.norm((SE2Pose.by_array(x1).inverse() *
-                        SE2Pose.by_array(x2)).log_map())
+        return np.linalg.norm(
+            (SE2Pose.by_array(x1).inverse() * SE2Pose.by_array(x2)).log_map()
+        )
 
     # @property
     # def dim(self):
@@ -399,9 +397,7 @@ class SE2Pose(object):
         r_s = self._rot.sin
         x = self._point.x
         y = self._point.y
-        return np.array([[r_c, -r_s, x],
-                         [r_s, r_c, y],
-                         [0, 0, 1]])
+        return np.array([[r_c, -r_s, x], [r_s, r_c, y], [0, 0, 1]])
 
     @property
     def array(self):
@@ -411,7 +407,7 @@ class SE2Pose(object):
         r = self._rot
         t = self._point
         w = r.theta
-        if (abs(w) < 1e-10):
+        if abs(w) < 1e-10:
             return np.array([t.x, t.y, w])
         else:
             c_1 = r.cos - 1.0
@@ -422,15 +418,33 @@ class SE2Pose(object):
             return np.array([v.x, v.y, w])
 
     def grad_x_logmap(self):
-        if(abs(self.theta) < 1e-10):
+        if abs(self.theta) < 1e-10:
             return np.identity(3)
         else:
             logmap_x, logmap_y, logmap_th = self.log_map()
             th_2 = logmap_th / 2.0
-            diag1 = th_2 * np.sin(logmap_th)/(1.0 - np.cos(logmap_th))
-            return np.array([[diag1, th_2, (logmap_x/logmap_th + th_2 * (self.x/(np.cos(logmap_th)-1)))],
-                             [-th_2, diag1,(logmap_y/logmap_th + th_2 * (self.y/(np.cos(logmap_th)-1)))],
-                             [.0, .0, 1.0]])
+            diag1 = th_2 * np.sin(logmap_th) / (1.0 - np.cos(logmap_th))
+            return np.array(
+                [
+                    [
+                        diag1,
+                        th_2,
+                        (
+                            logmap_x / logmap_th
+                            + th_2 * (self.x / (np.cos(logmap_th) - 1))
+                        ),
+                    ],
+                    [
+                        -th_2,
+                        diag1,
+                        (
+                            logmap_y / logmap_th
+                            + th_2 * (self.y / (np.cos(logmap_th) - 1))
+                        ),
+                    ],
+                    [0.0, 0.0, 1.0],
+                ]
+            )
 
     def range_and_bearing(self, pt: Point2):
         d = pt - self._point
@@ -439,7 +453,7 @@ class SE2Pose(object):
         return range, bearing
 
     def inverse(self) -> "SE2Pose":
-        inv_t = - (self._rot.unrotate_point(self._point))
+        inv_t = -(self._rot.unrotate_point(self._point))
         return SE2Pose.by_pt_rt(pt=inv_t, rt=self._rot.inverse())
 
     def copy(self) -> "SE2Pose":
@@ -474,8 +488,7 @@ class SE2Pose(object):
     def __imul__(self, other):
         if isinstance(other, SE2Pose):
             pos = self * other
-            self._point = self._point.set_x_y(x=pos.x,
-                                              y=pos.y)
+            self._point = self._point.set_x_y(x=pos.x, y=pos.y)
             self._rot = self._rot.set_theta(pos.theta)
             return self
         raise ValueError("Not a Pose2 type to multiply.")
@@ -483,28 +496,23 @@ class SE2Pose(object):
     def __itruediv__(self, other):
         if isinstance(other, SE2Pose):
             pos = self / other
-            self._point = self._point.set_x_y(x=pos.x,
-                                              y=pos.y)
+            self._point = self._point.set_x_y(x=pos.x, y=pos.y)
             self._rot = self._rot.set_theta(pos.theta)
             return self
         raise ValueError("Not a Pose2 type to divide.")
 
     def __str__(self) -> str:
-        string = "Pose2{" + \
-                 self._point.__str__() + \
-                 ", " + \
-                 self._rot.__str__() + \
-                 "}"
+        string = "Pose2{" + self._point.__str__() + ", " + self._rot.__str__() + "}"
         return string
 
     def __eq__(self, other: "SE2Pose") -> bool:
         if isinstance(other, SE2Pose):
-            return abs(self._rot.theta - other.theta) < 1e-8 and \
-                   abs(self._point.x - other.x) < 1e-8 and \
-                   abs(self._point.y - other.y) < 1e-8
+            return (
+                abs(self._rot.theta - other.theta) < 1e-8
+                and abs(self._point.x - other.x) < 1e-8
+                and abs(self._point.y - other.y) < 1e-8
+            )
         return False
 
     def __hash__(self):
-        return hash((self._point.x,
-                     self._point.y,
-                     self._rot.theta))
+        return hash((self._point.x, self._point.y, self._rot.theta))
