@@ -2,6 +2,7 @@ from abc import abstractmethod
 import numpy as np
 
 from src.noise_models.noise_model import NoiseModel
+from src.measurement.odom_measurement import OdomMeasurement
 from src.geometry.TwoDimension import SE2Pose
 
 
@@ -25,14 +26,14 @@ class OdomNoiseModel(NoiseModel):
         )
 
     @abstractmethod
-    def get_odometry_measurement(self, movement: SE2Pose) -> SE2Pose:
+    def get_odometry_measurement(self, movement: SE2Pose) -> OdomMeasurement:
         """Get a noisy odometry measurement from the true odometry.
 
         Args:
             movement (SE2Pose): the movement performed by the robot
 
         Returns:
-            SE2Pose: the noisy measurement of the movement
+            OdomMeasurement: the noisy measurement of the movement
         """
         pass
 
@@ -83,7 +84,7 @@ class GaussianOdomNoiseModel(OdomNoiseModel):
     def mean(self):
         return self._mean
 
-    def get_odometry_measurement(self, movement: SE2Pose) -> SE2Pose:
+    def get_odometry_measurement(self, movement: SE2Pose) -> OdomMeasurement:
         """Takes the groundtruth movement performed and then perturbs it by
         transformation randomly sampled from a Gaussian distribution and passed
         through the exponential map

@@ -1,6 +1,9 @@
 from typing import Tuple, Union
 from abc import ABC, abstractmethod
 from src.noise_models.range_noise_model import RangeNoiseModel
+from src.noise_models.odom_noise_model import OdomNoiseModel
+from src.measurement.range_measurement import RangeMeasurement
+from src.measurement.odom_measurement import OdomMeasurement
 from src.geometry.TwoDimension import SE2Pose, Point2
 
 
@@ -21,13 +24,14 @@ class Agent:
         self._name = name
         self._range_model = range_model
 
-    def get_range_measurement_to_agent(self, other_agent: Agent) -> float:
+    def get_range_measurement_to_agent(self, other_agent: Agent) -> RangeMeasurement:
         other_loc = other_agent.get_groundtruth_position()
         assert isinstance(other_loc, Point2)
         cur_loc = self.get_groundtruth_position()
         assert isinstance(cur_loc, Point2)
         dist = cur_loc.distance(other_loc)
         measurement = self._range_model.get_range_measurement(dist)
+        assert isinstance(measurement, RangeMeasurement)
         return measurement
 
     @abstractmethod
@@ -41,15 +45,23 @@ class Robot(Agent):
         name: str,
         start_pose: SE2Pose,
         range_model: RangeNoiseModel,
+        odometry_model: OdomNoiseModel,
     ):
-        super().__init__(name, range_model)
-
+        assert isinstance(name, str)
         assert isinstance(start_pose, SE2Pose)
+        assert isinstance(range_model, RangeNoiseModel)
+        assert isinstance(odometry_model, OdomNoiseModel)
+
+        super().__init__(name, range_model)
+        self._odom_model = odometry_model
         self._groundtruth_pose = start_pose
 
     def __str__(self) -> str:
-        return "Robot: {}\n".format(self._name) + "Groundtruth pose: {}\n\n".format(
-            self._groundtruth_pose
+        return (
+            f"Robot: {self._name}\n"
+            + f"Groundtruth pose: {self._groundtruth_pose}\n"
+            + f"Range model: {self._range_model}\n"
+            + f"Odometry model: {self._odom_model}\n"
         )
 
     @property
@@ -63,6 +75,26 @@ class Robot(Agent):
         assert isinstance(self._groundtruth_pose, SE2Pose)
         return self._groundtruth_pose
 
+    def move(self, transform: SE2Pose) -> OdomMeasurement:
+        """Moves the robot by the given transform and returns a noisy odometry
+        measurement of the move
+
+        Args:
+            transform (SE2Pose): the transform to move the robot by
+
+        Returns:
+            SE2Pose: the noisy measurement of the transform
+        """
+        assert isinstance(transform, SE2Pose)
+
+        # move the robot
+        self._groundtruth_pose = self._groundtruth_pose * transform
+
+        # get the odometry measurement
+        odom_measurement = self._odom_model.get_odometry_measurement(transform)
+        assert isinstance(odom_measurement, OdomMeasurement)
+        return odom_measurement
+
 
 class Beacon(Agent):
     def __init__(
@@ -71,13 +103,19 @@ class Beacon(Agent):
         start_position: Point2,
         range_model: RangeNoiseModel,
     ):
+        assert isinstance(name, str)
+        assert isinstance(start_position, Point2)
+        assert isinstance(range_model, RangeNoiseModel)
+
         super().__init__(name, range_model)
         self._groundtruth_position = start_position
 
     def __str__(self):
-        return "Beacon: {}\n".format(
-            self._name
-        ) + "Groundtruth position: {}\n\n".format(self._groundtruth_position)
+        return (
+            f"Beacon: {self._name}\n"
+            + f"Groundtruth position: {self._groundtruth_position}\n"
+            + f"Range model: {self._range_model}\n"
+        )
 
     @property
     def get_groundtruth_position(self) -> Point2:

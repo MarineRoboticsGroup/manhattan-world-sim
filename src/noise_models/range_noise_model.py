@@ -1,7 +1,9 @@
 import numpy as np
 from typing import Callable
+from types import FunctionType
 
 from src.noise_models.noise_model import NoiseModel
+from src.measurement.range_measurement import RangeMeasurement
 
 
 class RangeNoiseModel(NoiseModel):
@@ -12,11 +14,11 @@ class RangeNoiseModel(NoiseModel):
     measurement = f(true_distance, sensor_params)
     """
 
-    def __init__(self, name: str, noise_func: Callable[float]):
+    def __init__(self, name: str, measurement_model: Callable[float]):
         assert isinstance(name, str)
-        assert isinstance(noise_func, Callable)
+        assert isinstance(measurement_model, FunctionType)
         super().__init__(name)
-        self._noise_func = noise_func
+        self._noise_func = measurement_model
 
     def __str__(self):
         return (
@@ -26,10 +28,15 @@ class RangeNoiseModel(NoiseModel):
         )
 
     @property
-    def measurement_model(self):
+    def measurement_model(self) -> Callable[float]:
+        """This returns a function that takes in a distance and returns a measurement.
+
+        Returns:
+            Callable[float]: the measurement model
+        """
         return self._measurement_model
 
-    def get_range_measurement(self, true_dist: float) -> float:
+    def get_range_measurement(self, true_dist: float) -> RangeMeasurement:
         measurement = self._measurement_model(true_dist)
         assert isinstance(measurement, float)
         if measurement < 0:
@@ -57,7 +64,9 @@ class ConstantGaussianRangeNoiseModel(RangeNoiseModel):
         self._stddev = stddev
 
         # define the measurement model
-        measurement_model = lambda true_dist: np.random.normal(true_dist + mean, stddev)
+        measurement_model = lambda true_dist: RangeMeasurement(
+            true_dist, np.random.normal(true_dist + mean, stddev)
+        )
         super().__init__(name, measurement_model)
 
     def __str__(self):
@@ -68,11 +77,11 @@ class ConstantGaussianRangeNoiseModel(RangeNoiseModel):
         )
 
     @property
-    def mean(self):
+    def mean(self) -> float:
         return self._mean
 
     @property
-    def stddev(self):
+    def stddev(self) -> float:
         return self._stddev
 
 
@@ -92,7 +101,9 @@ class VaryingMeanGaussianRangeNoiseModel(RangeNoiseModel):
         self._stddev = stddev
 
         # define the measurement_model
-        measurement_model = lambda true_dist: np.random.normal(slope*true_dist, stddev)
+        measurement_model = lambda true_dist: RangeMeasurement(
+            true_dist, np.random.normal(slope * true_dist, stddev)
+        )
         super().__init__(name, measurement_model)
 
     def __str__(self):
@@ -103,9 +114,9 @@ class VaryingMeanGaussianRangeNoiseModel(RangeNoiseModel):
         )
 
     @property
-    def slope(self):
+    def slope(self) -> float:
         return self._slope
 
     @property
-    def stddev(self):
+    def stddev(self) -> float:
         return self._stddev
