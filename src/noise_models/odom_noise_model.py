@@ -98,13 +98,13 @@ class GaussianOdomNoiseModel(OdomNoiseModel):
         assert isinstance(movement, SE2Pose)
 
         # this is the constant component from the gaussian noise
-        mean_offset = SE2Pose.by_exp_map(self._mean).matrix
+        mean_offset = SE2Pose.by_exp_map(self._mean)
 
         # this is the random component from the gaussian noise
         noise_sample = np.random.multivariate_normal(np.zeros(3), self._covariance)
-        noise_offset = SE2Pose.by_exp_map(noise_sample).matrix
+        noise_offset = SE2Pose.by_exp_map(noise_sample)
 
         # because we're in 2D rotations commute so we don't need to think about
         # the order of operations
-        noisy_odom_measurement = movement.matrix @ mean_offset @ noise_offset
-        return noisy_odom_measurement
+        noisy_odom_measurement = movement * mean_offset * noise_offset
+        return OdomMeasurement(movement, noisy_odom_measurement)
