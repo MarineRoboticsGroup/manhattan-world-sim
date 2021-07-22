@@ -34,8 +34,8 @@ class ManhattanWaterworld:
         Args:
             grid_vertices_shape (tuple, optional): a tuple defining the shape of grid vertices; note that the vertices follow ij indexing. Defaults to (9, 9).
             cell_scale (int, optional): width and length of a cell. Defaults to 1.
-            robot_area (List[Tuple], optional): top left and bottom right vertices of a rectangular area; all the rest area will be infeasible. Defaults to None.
-            landmark_area (List[Tuple], optional):  top left and bottom right vertices of a rectangular area; all the rest area will be feasible. Defaults to None.
+            robot_area (List[Tuple], optional): bottom left and top right vertices of a rectangular area; all the rest area will be infeasible. Defaults to None.
+            landmark_area (List[Tuple], optional):  bottom left and top right vertices of a rectangular area; all the rest area will be feasible. Defaults to None.
             check_collision (bool, optional): [description]. Defaults to True.
             tol (float, optional): [description]. Defaults to 1e-5.
         """
