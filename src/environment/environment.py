@@ -32,6 +32,7 @@ def _find_nearest(
     delta = value - array[idx]
     return idx, delta, array[idx]
 
+
 class ManhattanWorld:
     """
     This class creates a simulated environment of Manhattan world with landmarks.
@@ -94,6 +95,24 @@ class ManhattanWorld:
             # if no area specified, all area is now feasible
             self._robot_feasibility = np.ones((self._x_pts, self._y_pts), dtype=bool)
 
+    def __str__(self):
+        line = ""
+        line += "Shape: " + self.shape.__repr__() + "\n"
+        line += "Cell scale: " + self.scale.__repr__() + "\n"
+        line += "Robot feasible vertices: " + self._robot_feasibility.__repr__() + "\n"
+        line += (
+            "Landmark feasible vertices: "
+            + self._landmark_feasibility.__repr__()
+            + "\n"
+        )
+        line += "Robots: " + self._robot_poses.__repr__() + "\n"
+        line += "Landmarks: " + self._landmark_points.__repr__() + "\n"
+        return line
+
+    @property
+    def scale(self) -> float:
+        return self._scale
+
     def set_robot_area_feasibility(self, area: List[Tuple[int, int]]):
         """Sets the feasibility status for the robots as a rectangular area. Anything
         outside of this area will be the inverse of the status.
@@ -149,65 +168,11 @@ class ManhattanWorld:
         neighbor_verts = self.get_neighboring_vertices(vert)
         assert self.check_vertex_list_valid(neighbor_verts)
 
-        feasible_neighbor_verts = self.get_robot_feasible_vertices(
-            neighbor_verts,
-        )
-        assert self.check_vertex_list_valid(feasible_neighbor_verts)
+        feasible_neighbor_verts = [
+            v for v in neighbor_verts if self.vertex_is_robot_feasible(v)
+        ]
 
         return feasible_neighbor_verts
-
-    def get_robot_feasible_vertices(
-        self,
-        vertices: List[tuple],
-    ) -> List[Tuple[int, int]]:
-        """Picks out vertices from a list that are in the robot feasible area.
-
-        Args:
-            vertices (List[tuple]): list of vertices
-
-        Returns:
-            List[tuple]: list of robot feasible vertices from the input list
-        """
-        assert self.check_vertex_list_valid(vertices)
-
-        feasible_verts = [v for v in vertices if self.vertex_is_robot_feasible(v)]
-        return feasible_verts
-
-    # TODO look over this function
-    def nearest_robot_vertex_coordinates(self, x: float, y: float) -> List[tuple]:
-        """Return the nearest coordinates of a vertex to the given coordinates
-
-        Args:
-            x (float): [description]
-            y (float): [description]
-
-        Raises:
-            ValueError: [description]
-
-        Returns:
-            List[tuple]: [description]
-        """
-        i, dx, x_close = _find_nearest(self._x_coords, x)
-        j, dy, y_close = _find_nearest(self._y_coords, y)
-        if abs(dx) < self._tol and abs(dy) < self._tol:
-            goal_vertices = self.get_neighboring_vertices(i, j)
-        elif abs(dy) < self._tol:
-            if dx > 0:
-                goal_vertices = [(i + 1, j), (i, j)]
-            else:
-                goal_vertices = [(i, j), (i - 1, j)]
-        elif abs(dx) < self._tol:
-            if dy > 0:
-                goal_vertices = [(i, j + 1), (i, j)]
-            else:
-                goal_vertices = [(i, j), (i, j - 1)]
-        else:
-            raise ValueError(
-                "The robot with location (" + str(x),
-                ", " + str(y) + ") falls off the grid.",
-            )
-        goal_vertices = self.get_robot_feasible_vertices(goal_vertices)
-        return [self.vertex2coordinate(*vertex) for vertex in goal_vertices]
 
     def coordinate2vertex(self, x: float, y: float) -> Tuple[int, int]:
         """Takes a coordinate and returns the corresponding vertex. Requires the
@@ -253,150 +218,6 @@ class ManhattanWorld:
         assert self.check_vertex_list_valid(nearest_vertices)
         return nearest_vertices
 
-    # TODO what is going on here
-    def agent_xy(self, agent2gt):
-        """Returns the x, y coordinates of every agent in the environment.
-
-        Args:
-            agent2gt ([type]): [description]
-
-        Returns:
-            [type]: [description]
-        """
-        return np.array([[pt.x, pt.y] for key, pt in agent2gt.items()])
-
-    def no_collision(self, x, y, agent2gt):
-        """Checks if agent is already at that x, y coordinate
-
-        Args:
-            x ([type]): [description]
-            y ([type]): [description]
-            agent2gt ([type]): [description]
-
-        Returns:
-            [type]: [description]
-        """
-        if self._check_collision:
-            gt_xy = self.agent_xy(agent2gt)
-            if gt_xy.shape[0] > 0:
-                xy = np.array([x, y])
-                min_dist = min(np.linalg.norm(gt_xy - xy, axis=1))
-                if min_dist > self._tol:
-                    return True
-                else:
-                    print(
-                        "Collision: minimum distance to existing agents is "
-                        + str(min_dist)
-                    )
-                    return False
-            else:
-                return True
-        else:
-            return True
-
-    def add_landmark(self, beacon: BeaconAgent, vert: Tuple[int, int]):
-        """Adds landmark to the environment.
-
-        Args:
-            beacon (BeaconAgent): [description]
-            vert (Tuple[int, int]): [description]
-
-        Returns:
-            [type]: [description]
-        """
-        # TODO replace beacon with BeaconAgent functionality
-        assert isinstance(beacon, BeaconAgent)
-        assert self.check_vertex_valid(vert)
-
-        i, j = vert
-        assert isinstance(i, int) and isinstance(j, int)
-
-        if self._landmark_feasibility[i, j] and beacon not in self._landmark_points:
-            x, y = self.vertex2coordinate(i, j)
-            if not self._landmark_points or self.no_collision(
-                x, y, self._landmark_points
-            ):
-                self._landmark_points[beacon] = Point2(x, y)
-                return True
-            else:
-                print("Add abort: landmark collision found.")
-                return False
-        elif beacon in self._beacon2point:
-            print("Add abort: duplicated landmark.")
-            return False
-        else:
-            print(
-                "Add abort: vertex ("
-                + str(i)
-                + ", "
-                + str(j)
-                + ") is infeasible for adding landmarks."
-            )
-            return False
-
-    def add_robot(self, robot: RobotAgent, vert: Tuple[int, int], orientation=0.0):
-        """Adds robot to the environment.
-
-        Args:
-            robot (RobotAgent): [description]
-            vert (Tuple[int, int]): [description]
-            orientation (float, optional): [description]. Defaults to 0.0.
-
-        Returns:
-            [type]: [description]
-        """
-        # TODO replace robot functionality with RobotAgent functionality
-        assert isinstance(robot, RobotAgent)
-        assert self.check_vertex_valid(vert)
-        assert isinstance(orientation, float)
-
-        i, j = vert
-
-        # TODO what are the conditions for adding a robot?
-        if self._robot_feasibility[i, j] and robot not in self._robot_poses:
-            x, y = self.vertex2coordinate(i, j)
-            if not self._robot_poses or self.no_collision(x, y, self._robot_poses):
-                self._robot_poses[robot] = SE2Pose(x, y, orientation)
-                return True
-            else:
-                print("Add abort: robot collision found.")
-                return False
-        elif robot in self._robot_poses:
-            print("Add abort: duplicated robot.")
-            return False
-        else:
-            print(
-                "Add abort: vertex ("
-                + str(i)
-                + ", "
-                + str(j)
-                + ") is infeasible for adding robots."
-            )
-            return False
-
-    def remove_robot(self, robot: RobotAgent):
-        """Removes robot from the environment.
-
-        Args:
-            agent ([type]): [description]
-
-        Returns:
-            [type]: [description]
-        """
-        assert isinstance(robot, RobotAgent)
-        assert robot in self._robot_poses
-        del self._robot_poses[robot]
-
-    def remove_landmark(self, beacon: BeaconAgent):
-        """removes beacon from the environment
-
-        Args:
-            beacon (BeaconAgent): [description]
-        """
-        assert isinstance(beacon, BeaconAgent)
-        assert beacon in self._landmark_points
-        del self._landmark_points[beacon]
-
     def vertex2coordinate(self, vert: Tuple[int, int]) -> Tuple[float, float]:
         """Takes a vertex and returns the corresponding coordinates
 
@@ -425,53 +246,6 @@ class ManhattanWorld:
         assert self.check_vertex_list_valid(vertices)
         return [self.vertex2coordinate(v) for v in vertices]
 
-    # TODO review this function
-    def is_xy_on_robot_grid(self, x, y):
-        """Checks if a coordinate is in the robot feasible region
-
-        Args:
-            x ([type]): [description]
-            y ([type]): [description]
-
-        Returns:
-            [type]: [description]
-        """
-        # if x and y is on the grid and within the robot area
-        # its nearest points in the area should be more than two.
-        nearest_xy = self.nearest_robot_vertex_coordinates(x, y)
-        if len(nearest_xy) >= 2:
-            return True
-        else:
-            return False
-
-    # TODO integrate this with current agent code
-    def update_robot_pose(self, robot: RobotAgent, pose: SE2Pose):
-        """Just updates the robot pose in the grid. Enforces that the robot
-        cannot leave the grid
-
-        Args:
-            robot (RobotAgent): [description]
-            pose (SE2Pose): [description]
-
-        Returns:
-            [type]: [description]
-        """
-        assert robot in self._robot_poses
-        x, y = pose.x, pose.y
-        on_grid_in_bound = self.is_xy_on_robot_grid(x, y)
-        no_collision = self.no_collision(x, y, self._robot_poses)
-        if on_grid_in_bound and no_collision:
-            self._robot_poses[robot] = pose
-            return True
-        if not no_collision:
-            print("Update abort: found collision.")
-        if not on_grid_in_bound:
-            print("Update abort: pose off grid.")
-        return False
-
-    def is_robot_vertex(self, i, j):
-        return self._robot_feasibility[i, j]
-
     def vertex_is_landmark_feasible(self, vert: Tuple[int, int]) -> bool:
         """Returns whether the vertex is feasible for landmarks.
 
@@ -499,68 +273,6 @@ class ManhattanWorld:
 
         i, j = vert
         return self._robot_feasibility[i, j]
-
-    @property
-    def vertices(self) -> np.ndarray:
-        mesh = np.array(
-            np.meshgrid(np.arange(self._x_pts), np.arange(self._y_pts), indexing="ij")
-        )
-        combinations = mesh.T.reshape(-1, 2)
-        return combinations
-
-    @property
-    def robot_feasible_vertices(self) -> np.ndarray:
-        res = []
-        for pt in self.vertices:
-            if self.is_robot_vertex(*pt):
-                res.append(pt)
-        return np.array(res)
-
-    @property
-    def landmark_feasible_vertices(self) -> np.ndarray:
-        res = []
-        for pt in self.vertices:
-            if self.vertex_is_landmark_feasible(*pt):
-                res.append(pt)
-        return np.array(res)
-
-    @property
-    def meshgrid(self) -> tuple:
-        return self._xv, self._yv
-
-    @property
-    def robot_feasibility(self) -> np.ndarray:
-        return self._robot_feasibility
-
-    @property
-    def shape(self) -> tuple:
-        return (self._x_pts, self._y_pts)
-
-    @property
-    def scale(self) -> float:
-        return self._scale
-
-    @property
-    def robots(self) -> List:
-        return [agent for agent in self._robot_poses]
-
-    @property
-    def landmarks(self) -> List:
-        return [agent for agent in self._landmark_points]
-
-    def __str__(self):
-        line = ""
-        line += "Shape: " + self.shape.__repr__() + "\n"
-        line += "Cell scale: " + self.scale.__repr__() + "\n"
-        line += "Robot feasible vertices: " + self._robot_feasibility.__repr__() + "\n"
-        line += (
-            "Landmark feasible vertices: "
-            + self._landmark_feasibility.__repr__()
-            + "\n"
-        )
-        line += "Robots: " + self._robot_poses.__repr__() + "\n"
-        line += "Landmarks: " + self._landmark_points.__repr__() + "\n"
-        return line
 
     def vertex_is_in_bounds(self, vert: Tuple[int, int]) -> bool:
         assert isinstance(vert, tuple)

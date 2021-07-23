@@ -65,13 +65,13 @@ class Robot(Agent):
         )
 
     @property
-    def get_groundtruth_position(self) -> Point2:
+    def groundtruth_position(self) -> Point2:
         assert isinstance(self._groundtruth_pose, SE2Pose)
         assert isinstance(self._groundtruth_pose.translation, Point2)
         return self._groundtruth_pose.get_translation()
 
     @property
-    def get_groundtruth_pose(self) -> SE2Pose:
+    def groundtruth_pose(self) -> SE2Pose:
         assert isinstance(self._groundtruth_pose, SE2Pose)
         return self._groundtruth_pose
 
@@ -100,15 +100,15 @@ class Beacon(Agent):
     def __init__(
         self,
         name: str,
-        start_position: Point2,
+        position: Point2,
         range_model: RangeNoiseModel,
     ):
         assert isinstance(name, str)
-        assert isinstance(start_position, Point2)
+        assert isinstance(position, Point2)
         assert isinstance(range_model, RangeNoiseModel)
 
         super().__init__(name, range_model)
-        self._groundtruth_position = start_position
+        self._groundtruth_position = position
 
     def __str__(self):
         return (
@@ -118,5 +118,5 @@ class Beacon(Agent):
         )
 
     @property
-    def get_groundtruth_position(self) -> Point2:
+    def groundtruth_position(self) -> Point2:
         return self._groundtruth_position
