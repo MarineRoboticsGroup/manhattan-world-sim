@@ -1,5 +1,4 @@
-from typing import Tuple, Union
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from src.noise_models.range_noise_model import RangeNoiseModel
 from src.noise_models.odom_noise_model import OdomNoiseModel
 from src.measurement.range_measurement import RangeMeasurement
@@ -7,6 +6,7 @@ from src.measurement.odom_measurement import OdomMeasurement
 from src.geometry.TwoDimension import SE2Pose, Point2
 
 
+# TODO need to make classes hashable!
 class Agent:
     """
     This class represents a general agent. In our simulator this is either a
