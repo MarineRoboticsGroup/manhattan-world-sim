@@ -101,7 +101,7 @@ class Point2(object):
         print("Not sure this is a good function to have... raising an error for now")
         raise NotImplementedError
         assert isinstance(other, Point2)
-        assert self.frame == other.frame # frame check
+        assert self.frame == other.frame  # frame check
 
         return other - self
 
@@ -161,7 +161,6 @@ class Point2(object):
         """
         assert np.isscalar(other)
         return Point2(self.x * other, self.y * other, self.frame)
-
 
     def __rmul__(self, other: np.scalar) -> "Point2":
         """Defines the left scalar multiple of this point so can use left or
@@ -226,7 +225,11 @@ class Point2(object):
     def __eq__(self, other: "Point2") -> bool:
         assert isinstance(other, Point2)
         if isinstance(other, Point2):
-            return abs(self.x - other.x) < 1e-8 and abs(self.y - other.y) < 1e-8 and self.frame == other.frame
+            return (
+                abs(self.x - other.x) < 1e-8
+                and abs(self.y - other.y) < 1e-8
+                and self.frame == other.frame
+            )
         return False
 
     def __hash__(self) -> int:
@@ -800,16 +803,18 @@ class SE2Pose(object):
         assert isinstance(local_point, Point2)
         return self * local_point
 
-    # TODO finish going through this function
     def __mul__(self, other):
         assert isinstance(other, (SE2Pose, Point2))
-        assert self.local_frame == other.base_frame
 
         if isinstance(other, SE2Pose):
+            assert self.local_frame == other.base_frame
             r = self._rot * other.rotation
             t = self._point + self._rot * other.translation
-            return SE2Pose.by_pt_rt(pt=t, rt=r)
+            return SE2Pose.by_pt_rt(
+                pt=t, rt=r, local_frame=other.local_frame, base_frame=self.base_frame
+            )
         if isinstance(other, Point2):
+            assert self.local_frame == other.frame
             return self._rot * other + self._point
 
     def __imul__(self, other):
@@ -817,11 +822,18 @@ class SE2Pose(object):
             pos = self * other
             self._point = self._point.set_x_y(x=pos.x, y=pos.y)
             self._rot = self._rot.set_theta(pos.theta)
+            self._local_frame = other.local_frame
             return self
         raise ValueError("Not a Pose2 type to multiply.")
 
     def __str__(self) -> str:
-        string = "Pose2{" + self._point.__str__() + ", " + self._rot.__str__() + "}"
+        string = "Pose2{"
+        string += f"x: {self.x}, "
+        string += f"y: {self.y}, "
+        string += f"theta: {self.theta}, "
+        string += f"local_frame: {self.local_frame}, "
+        string += f"base_frame: {self.base_frame}"
+        string += "}"
         return string
 
     def __eq__(self, other: "SE2Pose") -> bool:
@@ -830,8 +842,18 @@ class SE2Pose(object):
                 abs(self._rot.theta - other.theta) < 1e-8
                 and abs(self._point.x - other.x) < 1e-8
                 and abs(self._point.y - other.y) < 1e-8
+                and self._local_frame == other.local_frame
+                and self._base_frame == other.base_frame
             )
         return False
 
     def __hash__(self):
-        return hash((self._point.x, self._point.y, self._rot.theta))
+        return hash(
+            (
+                self._point.x,
+                self._point.y,
+                self._rot.theta,
+                self._local_frame,
+                self._base_frame,
+            )
+        )
