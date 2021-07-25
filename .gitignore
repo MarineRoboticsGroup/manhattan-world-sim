@@ -4,6 +4,27 @@ bin-release/
 [Oo]bj/
 [Bb]in/
 
+
+# Jupyter Notebooks #
+#####################
+.ipynb_checkpoints
+
+# Binaries #
+############
+*.pyc
+
+# Python #
+##########
+__pycache__/
+
+# VSCode #
+#############
+.history/
+.vscode/
+.history/*
+.vscode/*
+*.code-workspace
+
 # Other files and folders
 .settings/
 
