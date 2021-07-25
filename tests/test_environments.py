@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 import numpy.testing as test
 
-from src.environment.environment import ManhattanWorld
+from manhattan.environment.environment import ManhattanWorld
 
 
 class ManhattanWaterworldTestCase(unittest.TestCase):
