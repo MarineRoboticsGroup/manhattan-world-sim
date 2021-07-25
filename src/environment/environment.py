@@ -2,6 +2,7 @@ from copy import deepcopy
 
 import numpy as np
 from typing import Tuple, List, Union
+import matplotlib.pyplot as plt
 
 from src.agent.agent import Agent, RobotAgent, BeaconAgent
 from src.geometry.TwoDimension import SE2Pose, Point2
@@ -33,6 +34,7 @@ def _find_nearest(
     return idx, delta, array[idx]
 
 
+# TODO rewrite to capture the row_corner_number and col_corner_number cases
 class ManhattanWorld:
     """
     This class creates a simulated environment of Manhattan world with landmarks.
@@ -41,6 +43,8 @@ class ManhattanWorld:
     def __init__(
         self,
         grid_vertices_shape: tuple = (9, 9),
+        row_corner_number: int = 1,
+        column_corner_number: int = 1,
         cell_scale: float = 1.0,
         robot_area: List[Tuple] = None,
         check_collision: bool = True,
@@ -51,15 +55,24 @@ class ManhattanWorld:
         of now the robot feasible area is only rectangular
 
         Args:
-            grid_vertices_shape (tuple, optional): a tuple defining the shape of grid vertices; note that the vertices follow ij indexing. Defaults to (9, 9).
+            grid_vertices_shape (tuple, optional): a tuple defining the shape of
+                grid vertices; note that the vertices follow ij indexing.
+                Defaults to (9, 9).
             cell_scale (int, optional): width and length of a cell. Defaults to 1.
-            robot_area (List[Tuple], optional): bottom left and top right vertices of a rectangular area; all the rest area will be infeasible. Defaults to None.
+            robot_area (List[Tuple], optional): [(left, bottom), (right, top)]
+                bottom left and top right vertices of a rectangular area; all
+                the rest area will be infeasible. Defaults to None.
             check_collision (bool, optional): [description]. Defaults to True.
             tol (float, optional): [description]. Defaults to 1e-5.
         """
         assert isinstance(grid_vertices_shape, tuple)
         assert len(grid_vertices_shape) == 2
         self._x_pts, self._y_pts = grid_vertices_shape
+
+        assert isinstance(row_corner_number, int)
+        assert isinstance(column_corner_number, int)
+        self._row_corner_number = row_corner_number
+        self._column_corner_number = column_corner_number
 
         assert isinstance(cell_scale, float)
         self._scale = cell_scale
@@ -89,10 +102,26 @@ class ManhattanWorld:
         if robot_area is not None:
             # ensure a rectangular feasible area for robot
             bl, tr = robot_area
+
+            # set bounds on feasible area as variables
+            self._min_x_feasible = bl[0] * self._scale
+            self._max_x_feasible = tr[0] * self._scale
+            self._min_y_feasible = bl[1] * self._scale
+            self._max_y_feasible = tr[1] * self._scale
+
+            # also save a mask for the feasible area
             self._robot_feasibility = np.zeros((self._x_pts, self._y_pts), dtype=bool)
             self._robot_feasibility[bl[0] : tr[0] + 1, bl[1] : tr[1] + 1] = True
         else:
             # if no area specified, all area is now feasible
+
+            # set bounds on feasible area as variables
+            self._min_x_feasible = np.min(self._x_pts)
+            self._max_x_feasible = np.max(self._x_pts)
+            self._min_y_feasible = np.min(self._y_pts)
+            self._max_y_feasible = np.max(self._y_pts)
+
+            # also save a mask for the feasible area
             self._robot_feasibility = np.ones((self._x_pts, self._y_pts), dtype=bool)
 
     def __str__(self):
@@ -126,6 +155,14 @@ class ManhattanWorld:
 
         mask = np.zeros((self._x_pts, self._y_pts), dtype=bool)
         bl, tr = area
+
+        # set bounds on feasible area as variables
+        self._min_x_feasible = bl[0] * self._scale
+        self._max_x_feasible = tr[0] * self._scale
+        self._min_y_feasible = bl[1] * self._scale
+        self._max_y_feasible = tr[1] * self._scale
+
+        # also save a mask for the feasible area
         mask[bl[0] : tr[0] + 1, bl[1] : tr[1] + 1] = True
         self._robot_feasibility[mask] = True
         self._robot_feasibility[np.invert(mask)] = False
@@ -143,6 +180,16 @@ class ManhattanWorld:
         assert self.check_vertex_valid(vert)
         i, j = vert
         candidate_vertices = [(i + 1, j), (i, j + 1), (i - 1, j), (i, j - 1)]
+
+        # connectivity is based on whether we are at a corner or not
+        if i % self._row_corner_number == 0:
+            candidate_vertices.append((i - 1, j))
+            candidate_vertices.append((i + 1, j))
+        if j % self._row_corner_number == 0:
+            candidate_vertices.append((i, j - 1))
+            candidate_vertices.append((i, j + 1))
+
+        # prune all vertices that are out of bounds
         vertices_in_bound = [
             v for v in candidate_vertices if self.vertex_is_in_bounds(v)
         ]
@@ -309,6 +356,39 @@ class ManhattanWorld:
         assert all(isinstance(v, tuple) for v in vertices)
         assert all(self.check_vertex_valid(v) for v in vertices)
         return True
+
+    def plot_environment(self):
+        assert self._robot_feasibility.shape == (self._x_pts, self._y_pts)
+
+        # get rows and cols that the robot is allowed to travel on
+        valid_x = self._x_pts[self._x_pts % self._column_corner_number == 0]
+        valid_y = self._y_pts[self._y_pts % self._row_corner_number == 0]
+
+        # the bounds of the valid x and y values
+        max_x = np.max(valid_x)
+        min_x = np.min(valid_x)
+        max_y = np.max(valid_y)
+        min_y = np.min(valid_y)
+
+        plt.vlines(valid_x, min_y, max_y)
+        plt.hlines(valid_y, min_x, max_x)
+
+        # get the coords of the feasible points
+        # feas_x_coords = self._xv[self._robot_feasibility]
+        # feas_y_coords = self._yv[self._robot_feasibility]
+
+        for i in range(self._x_pts):
+            for j in range(self._y_pts):
+                if self._robot_feasibility[i, j]:
+                    plt.plot(self._xv[i, j], self._yv[i, j], "ro", markersize=10)
+                else:
+                    plt.plot(self._xv[i, j], self._yv[i, j], "go", markersize=10)
+
+        fig, ax = plt.subplots()
+        ax.set_aspect("equal")
+        # ax.plot(self._x_coords, self._y_coords, "b-")
+        print("Need to remove this show after testing!!!!")
+        plt.show(block=True)
 
     def robot_edge_path(
         self, feasibility=None, start_point: tuple = None

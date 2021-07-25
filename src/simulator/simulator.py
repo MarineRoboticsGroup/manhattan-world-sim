@@ -17,6 +17,8 @@ class ManhattanSimulator:
     simulation_params = namedtuple(
         """
         Args:
+            grid_shape (Tuple[int, int]): (rows, cols) the shape of the manhattan world
+            cell_scale (float): the length of the sides of the cells in the manhattan world
             range_sensing_prob (float): the probability of range sensing
             row_intersection_number (int): how many rows between each intersection
                 where the robot can turn
@@ -33,6 +35,8 @@ class ManhattanSimulator:
         """
         "Manhattan Simulation Parameters",
         [
+            "grid_shape",
+            "cell_scale",
             "range_sensing_prob",
             "row_corner_number",
             "column_corner_number",
@@ -41,14 +45,58 @@ class ManhattanSimulator:
             "loop_closure_prob",
             "loop_closure_radius",
         ],
-        defaults=(0.5, None, None, None, None),
+        defaults=((10, 10), 1.0, 0.5, 1, 1, 0.1, 0.1, 0.1, 2.0),
     )
 
-    def __init__(self, env: ManhattanWaterworld, args: simulation_params):
-        assert isinstance(env, ManhattanWorld)
+    def __init__(self, args: simulation_params):
+
+        # check input arguments for simulation parameters
         assert isinstance(args, self.simulation_params)
 
-        self._env = env
+        # grid_shape is tuple of positive ints
+        assert isinstance(args.grid_shape, tuple)
+        assert len(args.grid_shape) == 2
+        assert all(isinstance(x, int) for x in args.grid_shape)
+        assert all(0 < x for x in args.grid_shape)
+
+        # cell_scale is positive float
+        assert isinstance(args.cell_scale, float)
+        assert args.cell_scale > 0
+
+        # range_sensing_prob is float between 0 and 1
+        assert isinstance(args.range_sensing_prob, float)
+        assert 0 <= args.range_sensing_prob <= 1
+
+        # row_intersection_number is int > 0 and <= grid_shape[0]
+        assert isinstance(args.row_corner_number, int)
+        assert 0 <= args.row_corner_number <= args.grid_shape[0]
+
+        # column_intersection_number is int > 0 and <= grid_shape[1]
+        assert isinstance(args.column_corner_number, int)
+        assert 0 <= args.column_corner_number <= args.grid_shape[1]
+
+        # ambiguous_data_association_prob is float between 0 and 1
+        assert isinstance(args.ambiguous_data_association_prob, float)
+        assert 0 <= args.ambiguous_data_association_prob <= 1
+
+        # outlier_prob is float between 0 and 1
+        assert isinstance(args.outlier_prob, float)
+        assert 0 <= args.outlier_prob <= 1
+
+        # loop_closure_prob is float between 0 and 1
+        assert isinstance(args.loop_closure_prob, float)
+        assert 0 <= args.loop_closure_prob <= 1
+
+        # loop_closure_radius is float > 0
+        assert isinstance(args.loop_closure_radius, float)
+        assert 0 < args.loop_closure_radius
+
+        self._env = ManhattanWorld(
+            grid_vertices_shape=args.grid_shape,
+            row_corner_number=args.row_corner_number,
+            column_corner_number=args.column_corner_number,
+            cell_scale=args.cell_scale,
+        )
         self._args = args
         self._robots = []
         self._beacons = []
@@ -94,6 +142,7 @@ class ManhattanSimulator:
         assert isinstance(beacon, BeaconAgent)
         self._beacons.append(beacon)
 
+    # TODO finish this function
     def move_robots_randomly(
         self,
     ):
@@ -105,6 +154,7 @@ class ManhattanSimulator:
             robot_vert = self._env.nearest_robot_vertex_coordinates(robot_loc)
             i, j = robot_vert
 
+            # TODO should offload this logic to the environment
             # check if robot is at an intersection
             is_at_row_intersection = i % self._args.row_corner_number == 0
             is_at_col_intersection = j % self._args.column_corner_number == 0
@@ -131,12 +181,3 @@ class ManhattanSimulator:
 
     def execute_trajectories(self, trajectories: List[List[Tuple[int, int]]]):
         raise NotImplementedError
-
-    def random_waypoint_iterate(self):
-        env = self._env
-        for rbt in env.robots:
-            cur_pose = env._robot_poses[rbt]
-            goals = env.nearest_robot_vertex_coordinates(cur_pose.x, cur_pose.y)
-            next_wp = random.choice(goals)
-            moves = rbt.local_path_planner(cur_pose=cur_pose, goal=Point2(*next_wp))
-            pass
