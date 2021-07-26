@@ -28,17 +28,21 @@ class Agent:
         self._range_model = range_model
 
     def get_range_measurement_to_agent(self, other_agent: Agent) -> RangeMeasurement:
-        other_loc = other_agent.get_groundtruth_position()
+        other_loc = other_agent.get_position()
         assert isinstance(other_loc, Point2)
-        cur_loc = self.get_groundtruth_position()
+        cur_loc = self.get_position()
         assert isinstance(cur_loc, Point2)
         dist = cur_loc.distance(other_loc)
         measurement = self._range_model.get_range_measurement(dist)
         assert isinstance(measurement, RangeMeasurement)
         return measurement
 
+    @property
+    def name(self) -> str:
+        return self._name
+
     @abstractmethod
-    def get_groundtruth_position(self) -> Point2:
+    def get_position(self) -> Point2:
         pass
 
     @abstractmethod
@@ -61,26 +65,35 @@ class Robot(Agent):
 
         super().__init__(name, range_model)
         self._odom_model = odometry_model
-        self._groundtruth_pose = start_pose
+        self._pose = start_pose
+        self._timestep = 0
 
     def __str__(self) -> str:
         return (
             f"Robot: {self._name}\n"
-            + f"Groundtruth pose: {self._groundtruth_pose}\n"
-            + f"Range model: {self._range_model}\n"
+            + f"Timestep: {self._timestep}"
+            + f"Groundtruth pose: {self._pose}\n"
+            + f"Range model: {self._range_model}"
             + f"Odometry model: {self._odom_model}\n"
         )
 
     @property
-    def groundtruth_position(self) -> Point2:
-        assert isinstance(self._groundtruth_pose, SE2Pose)
-        assert isinstance(self._groundtruth_pose.translation, Point2)
-        return self._groundtruth_pose.translation
+    def position(self) -> Point2:
+        assert isinstance(self._pose, SE2Pose)
+        assert isinstance(self._pose.translation, Point2)
+        return self._pose.translation
 
     @property
-    def groundtruth_pose(self) -> SE2Pose:
-        assert isinstance(self._groundtruth_pose, SE2Pose)
-        return self._groundtruth_pose
+    def pose(self) -> SE2Pose:
+        assert isinstance(self._pose, SE2Pose)
+        return self._pose
+
+    @property
+    def timestep(self) -> int:
+        return self._timestep
+
+    def _increment_timestep(self) -> None:
+        self._timestep += 1
 
     def move(self, transform: SE2Pose) -> OdomMeasurement:
         """Moves the robot by the given transform and returns a noisy odometry
@@ -95,7 +108,8 @@ class Robot(Agent):
         assert isinstance(transform, SE2Pose)
 
         # move the robot
-        self._groundtruth_pose = self._groundtruth_pose * transform
+        self._pose = self._pose * transform
+        self._increment_timestep()
 
         # get the odometry measurement
         odom_measurement = self._odom_model.get_odometry_measurement(transform)
@@ -104,7 +118,7 @@ class Robot(Agent):
 
     def plot(self) -> None:
         """Plots the robot's groundtruth position"""
-        cur_position = self.groundtruth_position
+        cur_position = self.position
         plt.plot(cur_position.x, cur_position.y, "bx", markersize=10)
 
 
@@ -121,20 +135,20 @@ class Beacon(Agent):
         assert isinstance(range_model, RangeNoiseModel)
 
         super().__init__(name, range_model)
-        self._groundtruth_position = position
+        self._position = position
 
     def __str__(self):
         return (
             f"Beacon: {self._name}\n"
-            + f"Groundtruth position: {self._groundtruth_position}\n"
+            + f"Groundtruth position: {self._position}\n"
             + f"Range model: {self._range_model}\n"
         )
 
     @property
-    def groundtruth_position(self) -> Point2:
-        return self._groundtruth_position
+    def position(self) -> Point2:
+        return self._position
 
     def plot(self) -> None:
         """Plots the beacons's groundtruth position"""
-        cur_position = self.groundtruth_position
+        cur_position = self.position
         plt.plot(cur_position.x, cur_position.y, "g+", markersize=10)

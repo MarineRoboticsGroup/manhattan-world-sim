@@ -1,11 +1,13 @@
 from copy import deepcopy
 
+import random
 import itertools
 import numpy as np
 from typing import Tuple, List, Union
 import matplotlib.pyplot as plt
 
 from manhattan.geometry.TwoDimension import SE2Pose, Point2
+from manhattan.agent.agent import Robot
 
 
 def _find_nearest(
@@ -168,12 +170,7 @@ class ManhattanWorld:
 
     @property
     def bounds(self) -> Tuple[float, float, float, float]:
-        return (
-            0.0,
-            0.0,
-            self._x_coords[-1],
-            self._y_coords[-1]
-        )
+        return (0.0, 0.0, self._x_coords[-1], self._y_coords[-1])
 
     def set_robot_area_feasibility(self, area: List[Tuple[int, int]]):
         """Sets the feasibility status for the robots as a rectangular area. Anything
@@ -238,7 +235,7 @@ class ManhattanWorld:
         candidate_vertices = [(i + 1, j), (i, j + 1), (i - 1, j), (i, j - 1)]
 
         # connectivity is based on whether we are at a corner or not
-        if i % self._row_corner_number == 0:
+        if i % self._column_corner_number == 0:
             candidate_vertices.append((i - 1, j))
             candidate_vertices.append((i + 1, j))
         if j % self._row_corner_number == 0:
@@ -258,9 +255,7 @@ class ManhattanWorld:
         feasible for the robot. Only returns valid indices (not out of bounds)
 
         Args:
-            i (int): [description]
-            j (int): [description]
-            feasibility ([type], optional): [description]. Defaults to None.
+            vert (tuple): a vertex index (i, j)
 
         Returns:
             List[Tuple[int, int]]: the list of neighboring vertices that are
@@ -276,6 +271,46 @@ class ManhattanWorld:
         ]
 
         return feasible_neighbor_verts
+
+    def get_neighboring_robot_vertices_not_behind_robot(
+        self, robot: Robot,
+    ) -> List[Tuple[int, int]]:
+        """get all neighboring vertices to the vertex the robot is at which are
+        not behind the given robot
+
+        Args:
+            robot (Robot): the robot
+
+        Returns:
+            List[Tuple[int, int]]: the list of neighboring vertices that are
+                not behind the robot
+        """
+        assert isinstance(robot, Robot)
+
+        # get robot position
+        robot_loc = robot.position
+        robot_pose = robot.pose
+
+        # get robot vertex
+        robot_vert = self.point2vertex(robot_loc)
+        assert self.check_vertex_valid(robot_vert)
+
+        # get neighboring vertices in the robot feasible space
+        neighboring_feasible_vertices = self.get_neighboring_robot_vertices(robot_vert)
+        assert self.check_vertex_list_valid(neighboring_feasible_vertices)
+
+        # convert vertices to points
+        neighboring_feasible_pts = [
+            self.vertex2point(v) for v in neighboring_feasible_vertices
+        ]
+
+        not_behind_pts = []
+        for pt in neighboring_feasible_pts:
+            distance, bearing = robot_pose.range_and_bearing_to_point(pt)
+            if np.abs(bearing) < (np.pi / 2) + self._tol:
+                not_behind_pts.append((pt, bearing))
+
+        return not_behind_pts
 
     def get_random_robot_pose(self, local_frame: str) -> SE2Pose:
         """Returns a random, feasible robot pose located on a corner in the
@@ -328,7 +363,7 @@ class ManhattanWorld:
             frame (str): the frame of the beacon
 
         Returns:
-            Point2: a random valid beacon point
+            Point2: a random valid beacon point, None if no position is feasible
         """
         assert isinstance(frame, str)
 
@@ -343,14 +378,19 @@ class ManhattanWorld:
         possible_verts = itertools.product(x_idxs, y_idxs)  # cartesian product
 
         # prune out the infeasible vertices
-        feasible_verts = [vert for vert in possible_verts if self.vertex_is_beacon_feasible(vert)]
+        feasible_verts = [
+            vert for vert in possible_verts if self.vertex_is_beacon_feasible(vert)
+        ]
+
+        if len(feasible_verts) == 0:
+            return None
 
         # randomly sample one of the vertices
-        vert_sample_idx = np.random.choice(np.arange(len(feasible_verts)))
-        vert_sample = feasible_verts[vert_sample_idx]
+        vert_sample = random.choice(feasible_verts)
+        # vert_sample = feasible_verts[vert_sample_idx]
 
         i, j = vert_sample
-        position = Point2(self._xv[i,j], self._yv[i,j], frame=frame)
+        position = Point2(self._xv[i, j], self._yv[i, j], frame=frame)
         return position
 
     ###### Coordinate and vertex conversion methods ######
@@ -427,6 +467,36 @@ class ManhattanWorld:
         assert self.check_vertex_list_valid(vertices)
         return [self.vertex2coordinate(v) for v in vertices]
 
+    def vertex2point(self, vert: Tuple[int, int]) -> Point2:
+        """Takes a vertex and returns the corresponding point in the world frame
+
+        Args:
+            vert (Tuple[int, int]): (i, j) vertex
+
+        Returns:
+            Point2: point in the world frame
+        """
+        assert self.check_vertex_valid(vert)
+
+        x, y = self.vertex2coordinate(vert)
+        return Point2(x, y, frame="world")
+
+    def point2vertex(self, point: Point2) -> Tuple[int, int]:
+        """Takes a point in the world frame and returns the corresponding
+        vertex
+
+        Args:
+            point (Point2): point in the world frame
+
+        Returns:
+            Tuple[int, int]: (i, j) vertex
+        """
+        assert isinstance(point, Point2)
+        assert point.frame == "world"
+
+        x, y = point.x, point.y
+        return self.coordinate2vertex(x, y)
+
     ####### Check vertex validity #########
 
     def pose_is_robot_feasible(self, pose: SE2Pose) -> bool:
@@ -501,7 +571,7 @@ class ManhattanWorld:
 
         # vertex can only be feasible if on one of the lines defined by the
         # row/column spacing
-        if i % self._row_corner_number == 0 or j % self._row_corner_number == 0:
+        if i % self._column_corner_number == 0 or j % self._row_corner_number == 0:
             return self._robot_feasibility[i, j]
         else:
             return False
@@ -509,7 +579,7 @@ class ManhattanWorld:
     def vertex_is_in_bounds(self, vert: Tuple[int, int]) -> bool:
         assert isinstance(vert, tuple)
         assert len(vert) == 2
-        assert all(isinstance(x, int) for x in vert)
+        assert all(isinstance(x, np.integer) for x in vert)
 
         x_in_bounds = 0 <= vert[0] < self._num_x_pts
         y_in_bounds = 0 <= vert[1] < self._num_y_pts

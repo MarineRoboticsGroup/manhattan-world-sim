@@ -110,6 +110,26 @@ class ManhattanSimulator:
         self._robots = []
         self._beacons = []
 
+    @property
+    def robots(self) -> List[Robot]:
+        return self._robots
+
+    @property
+    def beacons(self) -> List[Beacon]:
+        return self._beacons
+
+    def add_robots(self, num_robots: int):
+        assert isinstance(num_robots, int)
+        assert num_robots > 0
+        for _ in range(num_robots):
+            self.add_robot()
+
+    def add_beacons(self, num_beacons: int):
+        assert isinstance(num_beacons, int)
+        assert num_beacons > 0
+        for _ in range(num_beacons):
+            self.add_beacon()
+
     def add_robot(
         self,
         start_pose: SE2Pose = None,
@@ -134,7 +154,8 @@ class ManhattanSimulator:
         # if no pose passed in, sample a random pose
         name = f"Robot {len(self._robots)}"
         if start_pose is None:
-            start_pose = self._env.get_random_robot_pose(local_frame=name)
+            frame_name = f"{name} time: 0"
+            start_pose = self._env.get_random_robot_pose(local_frame=frame_name)
 
         # make sure that robot pose abides by the rules of the environment
         assert isinstance(start_pose, SE2Pose)
@@ -162,7 +183,9 @@ class ManhattanSimulator:
         assert isinstance(range_model, RangeNoiseModel)
 
         if position is None:
-            position = self._env.get_random_beacon_point(frame='world')
+            position = self._env.get_random_beacon_point(frame="world")
+            if position is None:
+                return
 
         # make sure that beacon position abides by the rules of the environment
         assert self._env.position_is_beacon_feasible(
@@ -172,6 +195,18 @@ class ManhattanSimulator:
         name = f"Beacon {len(self._beacons)}"
         beacon = Beacon(name, position, range_model)
         self._beacons.append(beacon)
+
+    def print_simulator_state(self):
+        self.print_robot_states()
+        self.print_beacon_states()
+
+    def print_robot_states(self):
+        for robot in self.robots:
+            print(robot)
+
+    def print_beacon_states(self):
+        for beacon in self._beacons:
+            print(beacon)
 
     def plot_current_state(self, show_grid=False):
         """Plots the current state of the simulator.
@@ -190,46 +225,41 @@ class ManhattanSimulator:
             beacon.plot()
 
         x_lb, y_lb, x_ub, y_ub = self._env.bounds
-        plt.xlim(x_lb-1, x_ub+1)
-        plt.ylim(y_lb-1, y_ub+1)
+        plt.xlim(x_lb - 1, x_ub + 1)
+        plt.ylim(y_lb - 1, y_ub + 1)
 
-        plt.show(block=True)
-        raise NotImplementedError
+        plt.show(block=False)
+        plt.pause(0.05)
+        plt.clf()
 
-    # TODO finish this function
+    # TODO docstring this function
     def move_robots_randomly(self,):
         for robot in self._robots:
-            # get robot position
-            robot_loc = robot.position
+            possible_moves = self._env.get_neighboring_robot_vertices_not_behind_robot(
+                robot
+            )
+            assert isinstance(possible_moves, list)
+            assert all(
+                isinstance(v[0], Point2) and isinstance(v[1], float)
+                for v in possible_moves
+            )
+            assert len(possible_moves) > 0
 
-            # get robot vertex
-            robot_vert = self._env.nearest_robot_vertex_coordinates(robot_loc)
-            i, j = robot_vert
+            move = random.choice(possible_moves)
+            move_pt, bearing = move
 
-            # TODO should offload this logic to the environment
-            # check if robot is at an intersection
-            is_at_row_intersection = i % self._args.row_corner_number == 0
-            is_at_col_intersection = j % self._args.column_corner_number == 0
-            assert isinstance(is_at_row_intersection, bool)  # just to be sure
-            assert isinstance(is_at_col_intersection, bool)  # just to be sure
+            move_pt_local = robot.pose.transform_base_point_to_local(move_pt)
+            move_frame_name = f"{robot.name} time: {robot.timestep+1}"
 
-            # if robot is at an intersection then it can consider turning left
-            # or right
-            if is_at_row_intersection and is_at_col_intersection:
-                neighbor_vertices = self._env.get_neighboring_robot_vertices(robot_vert)
-                neighbor_vertices_coords = self._env.vertices2coordinates(
-                    neighbor_vertices
-                )
+            move_transform = SE2Pose(
+                move_pt_local.x,
+                move_pt_local.y,
+                bearing,
+                local_frame=move_frame_name,
+                base_frame=robot.pose.local_frame,
+            )
+            robot.move(move_transform)
 
-                move_dist = self._env.scale
-                # left_turn = SE2Pose(
-                # move_options =
-
-                raise NotImplementedError
-            # get neighbors of vertex
-            # select n
-            # rbt.random_move()
-        raise NotImplementedError
 
     def execute_trajectories(self, trajectories: List[List[Tuple[int, int]]]):
         raise NotImplementedError

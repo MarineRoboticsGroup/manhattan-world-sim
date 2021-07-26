@@ -58,8 +58,12 @@ class Point2(object):
         return self._y
 
     @property
+    def frame(self) -> str:
+        return self._frame
+
+    @property
     def norm(self) -> float:
-        return np.linalg.norm(self.x, self.y)
+        return np.linalg.norm([self.x, self.y])
 
     @property
     def array(self) -> np.ndarray:
@@ -367,6 +371,14 @@ class Rot2(object):
     def matrix(self):
         return np.array([[self.cos, -self.sin], [self.sin, self.cos]])
 
+    @property
+    def local_frame(self) -> str:
+        return self._local_frame
+
+    @property
+    def base_frame(self) -> str:
+        return self._base_frame
+
     def set_theta(self, theta: float = None) -> "Rot2":
         if theta is not None:
             assert np.isscalar(theta)
@@ -468,7 +480,7 @@ class Rot2(object):
             assert self.local_frame == other.frame
             x = self.cos * other.x - self.sin * other.y
             y = self.sin * other.x + self.cos * other.y
-            return Point2(x, y, base_frame=self.base_frame)
+            return Point2(x, y, frame=self.base_frame)
 
         raise ValueError("Not a Point2 or Rot2 type to multiply.")
 
@@ -508,10 +520,14 @@ class SE2Pose(object):
     def __init__(
         self, x: float, y: float, theta: float, local_frame: str, base_frame: str,
     ) -> None:
-        """
-        Create a 2D pose
-        : theta is in radians
-        : _theta should be in [-pi, pi] as a state
+        """A pose in SE(2) defined by translation and rotation
+
+        Args:
+            x (float): the x-coordinate of the pose in the base frame
+            y (float): the y-coordinate of the pose in the base frame
+            theta (float): the angle of the pose in radians in the base frame
+            local_frame (str): the local frame of the pose
+            base_frame (str): the base frame of the pose
         """
         assert isinstance(x, float)
         assert isinstance(y, float)
@@ -572,6 +588,8 @@ class SE2Pose(object):
     ) -> "SE2Pose":
         """Constructs a pose from a exponential map vector
 
+        using notes found here: https://ethaneade.com/lie.pdf
+
         :expect vector is a 1*3 array for 2D
 
         Args:
@@ -591,14 +609,22 @@ class SE2Pose(object):
         if abs(w) < 1e-10:
             return SE2Pose(vector[0], vector[1], w, local_frame, base_frame)
         else:
-            pt = Point2(vector[0], vector[1], frame="temp_local")
-            w_rot = Rot2(w)
-            rot_pi_2 = Rot2(np.pi / 2, local_frame="temp_local", base_frame="temp_base")
-            v_ortho = SE2Pose.rot_pi_2 * pt
-            t = (v_ortho - w_rot.rotate_point(v_ortho)) / w
-            return cls(
-                x=t.x, y=t.y, theta=w, local_frame=local_frame, base_frame=base_frame
-            )
+            cos_theta = np.cos(w)
+            sin_theta = np.sin(w)
+
+            # get rotation
+            R = np.array([[cos_theta, -sin_theta], [sin_theta, cos_theta]])
+            assert R.shape == (2, 2)
+            rt = Rot2.by_matrix(R, local_frame, base_frame)
+
+            # get translation
+            V = np.array([[sin_theta, cos_theta - 1], [1-cos_theta, sin_theta]]) / w
+            u = vector[0:2]
+            t = V @ u
+            assert len(u) == 2
+            pt = Point2.by_array(t, base_frame)
+
+            return SE2Pose.by_pt_rt(pt, rt, local_frame, base_frame)
 
     @classmethod
     def by_array(
@@ -731,7 +757,9 @@ class SE2Pose(object):
         assert isinstance(pt, Point2)
         diff = pt - self._point
         dist = diff.norm
-        bearing = self._rot.bearing(diff)
+        bearing = self._rot.bearing_to_base_frame_point(diff)
+        # bearing = self._rot.bearing_to_local_frame_point(diff)
+        # bearing = self._rot.bearing(diff)
         return dist, bearing
 
     def inverse(self) -> "SE2Pose":
@@ -763,10 +791,10 @@ class SE2Pose(object):
         """Returns the coordinate frame of this pose with respect to the given
         pose.
 
-        e.g.    T_0_to_1 / T_0_to_2
-                = inv(T_0_to_2) * T_0_to_1
-                = T_2_to_0 * T_0_to_1
-                = T_2_to_1
+        e.g.    T_0_to_1 -> T_0_to_2
+                = inv(T_0_to_1) * T_0_to_2
+                = T_1_to_0 * T_0_to_2
+                = T_1_to_2
 
         Args:
             other (SE2Pose): the other pose which we want the coordinate frame
@@ -786,7 +814,7 @@ class SE2Pose(object):
 
         return self.inverse() * other
 
-    def transform_point(self, local_point: Point2) -> Point2:
+    def transform_local_point_to_base(self, local_point: Point2) -> Point2:
         """Returns a point expressed in local frame of self in the base frame of
         self
 
@@ -798,6 +826,21 @@ class SE2Pose(object):
         """
         assert isinstance(local_point, Point2)
         return self * local_point
+
+    def transform_base_point_to_local(self, base_point: Point2) -> Point2:
+        """Returns a point expressed in base frame of self in the local frame of
+        self
+
+        Args:
+            base_point (Point2): the point expressed in the base frame of self
+
+        Returns:
+            Point2: a point expressed in the local frame of self
+        """
+        assert isinstance(base_point, Point2)
+        return self.inverse() * base_point
+
+
 
     def __mul__(self, other):
         assert isinstance(other, (SE2Pose, Point2))

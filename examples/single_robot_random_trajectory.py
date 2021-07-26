@@ -1,12 +1,8 @@
 import os
 import sys
-
 sys.path.insert(0, os.path.abspath(".."))
 
 from manhattan.simulator.simulator import ManhattanSimulator
-
-# from manhattan.environment.environment import ManhattanWorld
-
 
 sim_args = ManhattanSimulator.SimulationParams(
     grid_shape=(20, 20),
@@ -26,9 +22,7 @@ num_beacons = 2
 sim.add_robots(num_robots)
 sim.add_beacons(num_beacons)
 
-num_timesteps = 10
+num_timesteps = 100
 for _ in range(num_timesteps):
     sim.move_robots_randomly()
-
-sim.print_simulator_state()
-sim.plot_current_state(show_grid=True)
+    sim.plot_current_state(show_grid=True)
