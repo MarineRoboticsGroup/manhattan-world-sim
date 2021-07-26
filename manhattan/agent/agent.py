@@ -1,6 +1,7 @@
 from __future__ import annotations
 from abc import abstractmethod
 import matplotlib.pyplot as plt
+import numpy as np
 
 from manhattan.noise_models.range_noise_model import RangeNoiseModel
 from manhattan.noise_models.odom_noise_model import OdomNoiseModel
@@ -17,9 +18,7 @@ class Agent:
     """
 
     def __init__(
-        self,
-        name: str,
-        range_model: RangeNoiseModel,
+        self, name: str, range_model: RangeNoiseModel,
     ):
         assert isinstance(name, str)
         assert isinstance(range_model, RangeNoiseModel)
@@ -89,6 +88,11 @@ class Robot(Agent):
         return self._pose
 
     @property
+    def heading(self) -> float:
+        """Returns the robot's current heading in radians"""
+        return self.pose.theta
+
+    @property
     def timestep(self) -> int:
         return self._timestep
 
@@ -119,16 +123,27 @@ class Robot(Agent):
     def plot(self) -> None:
         """Plots the robot's groundtruth position"""
         cur_position = self.position
-        plt.plot(cur_position.x, cur_position.y, "bx", markersize=10)
 
+        heading_tol = 1e-8
+        if abs(self.heading) < heading_tol:
+            plt.plot(cur_position.x, cur_position.y, "b>", markersize=10)
+        elif abs(self.heading - (np.pi / 2.0)) < heading_tol:
+            plt.plot(cur_position.x, cur_position.y, "b^", markersize=10)
+        elif (
+            abs(self.heading + np.pi) < heading_tol
+            or abs(self.heading - np.pi) < heading_tol
+        ):
+            plt.plot(cur_position.x, cur_position.y, "b<", markersize=10)
+        elif abs(self.heading + (np.pi / 2.0)) < heading_tol:
+            plt.plot(cur_position.x, cur_position.y, "bv", markersize=10)
+        else:
+            print(f"Unhandled heading: {self.heading}")
+            raise NotImplementedError
 
 
 class Beacon(Agent):
     def __init__(
-        self,
-        name: str,
-        position: Point2,
-        range_model: RangeNoiseModel,
+        self, name: str, position: Point2, range_model: RangeNoiseModel,
     ):
         assert isinstance(name, str)
         assert isinstance(position, Point2)
@@ -151,4 +166,4 @@ class Beacon(Agent):
     def plot(self) -> None:
         """Plots the beacons's groundtruth position"""
         cur_position = self.position
-        plt.plot(cur_position.x, cur_position.y, "g+", markersize=10)
+        plt.plot(cur_position.x, cur_position.y, "g*", markersize=10)
