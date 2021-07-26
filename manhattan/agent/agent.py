@@ -1,0 +1,169 @@
+from __future__ import annotations
+from abc import abstractmethod
+import matplotlib.pyplot as plt
+import numpy as np
+
+from manhattan.noise_models.range_noise_model import RangeNoiseModel
+from manhattan.noise_models.odom_noise_model import OdomNoiseModel
+from manhattan.measurement.range_measurement import RangeMeasurement
+from manhattan.measurement.odom_measurement import OdomMeasurement
+from manhattan.geometry.TwoDimension import SE2Pose, Point2
+
+
+# TODO need to make classes hashable!
+class Agent:
+    """
+    This class represents a general agent. In our simulator this is either a
+    robot or a stationary beacon.
+    """
+
+    def __init__(
+        self, name: str, range_model: RangeNoiseModel,
+    ):
+        assert isinstance(name, str)
+        assert isinstance(range_model, RangeNoiseModel)
+
+        self._name = name
+        self._range_model = range_model
+
+    def get_range_measurement_to_agent(self, other_agent: Agent) -> RangeMeasurement:
+        other_loc = other_agent.get_position()
+        assert isinstance(other_loc, Point2)
+        cur_loc = self.get_position()
+        assert isinstance(cur_loc, Point2)
+        dist = cur_loc.distance(other_loc)
+        measurement = self._range_model.get_range_measurement(dist)
+        assert isinstance(measurement, RangeMeasurement)
+        return measurement
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @abstractmethod
+    def get_position(self) -> Point2:
+        pass
+
+    @abstractmethod
+    def plot(self) -> None:
+        pass
+
+
+class Robot(Agent):
+    def __init__(
+        self,
+        name: str,
+        start_pose: SE2Pose,
+        range_model: RangeNoiseModel,
+        odometry_model: OdomNoiseModel,
+    ):
+        assert isinstance(name, str)
+        assert isinstance(start_pose, SE2Pose)
+        assert isinstance(range_model, RangeNoiseModel)
+        assert isinstance(odometry_model, OdomNoiseModel)
+
+        super().__init__(name, range_model)
+        self._odom_model = odometry_model
+        self._pose = start_pose
+        self._timestep = 0
+
+    def __str__(self) -> str:
+        return (
+            f"Robot: {self._name}\n"
+            + f"Timestep: {self._timestep}"
+            + f"Groundtruth pose: {self._pose}\n"
+            + f"Range model: {self._range_model}"
+            + f"Odometry model: {self._odom_model}\n"
+        )
+
+    @property
+    def position(self) -> Point2:
+        assert isinstance(self._pose, SE2Pose)
+        assert isinstance(self._pose.translation, Point2)
+        return self._pose.translation
+
+    @property
+    def pose(self) -> SE2Pose:
+        assert isinstance(self._pose, SE2Pose)
+        return self._pose
+
+    @property
+    def heading(self) -> float:
+        """Returns the robot's current heading in radians"""
+        return self.pose.theta
+
+    @property
+    def timestep(self) -> int:
+        return self._timestep
+
+    def _increment_timestep(self) -> None:
+        self._timestep += 1
+
+    def move(self, transform: SE2Pose) -> OdomMeasurement:
+        """Moves the robot by the given transform and returns a noisy odometry
+        measurement of the move
+
+        Args:
+            transform (SE2Pose): the transform to move the robot by
+
+        Returns:
+            SE2Pose: the noisy measurement of the transform
+        """
+        assert isinstance(transform, SE2Pose)
+
+        # move the robot
+        self._pose = self._pose * transform
+        self._increment_timestep()
+
+        # get the odometry measurement
+        odom_measurement = self._odom_model.get_odometry_measurement(transform)
+        assert isinstance(odom_measurement, OdomMeasurement)
+        return odom_measurement
+
+    def plot(self) -> None:
+        """Plots the robot's groundtruth position"""
+        cur_position = self.position
+
+        heading_tol = 1e-8
+        if abs(self.heading) < heading_tol:
+            plt.plot(cur_position.x, cur_position.y, "b>", markersize=10)
+        elif abs(self.heading - (np.pi / 2.0)) < heading_tol:
+            plt.plot(cur_position.x, cur_position.y, "b^", markersize=10)
+        elif (
+            abs(self.heading + np.pi) < heading_tol
+            or abs(self.heading - np.pi) < heading_tol
+        ):
+            plt.plot(cur_position.x, cur_position.y, "b<", markersize=10)
+        elif abs(self.heading + (np.pi / 2.0)) < heading_tol:
+            plt.plot(cur_position.x, cur_position.y, "bv", markersize=10)
+        else:
+            print(f"Unhandled heading: {self.heading}")
+            raise NotImplementedError
+
+
+class Beacon(Agent):
+    def __init__(
+        self, name: str, position: Point2, range_model: RangeNoiseModel,
+    ):
+        assert isinstance(name, str)
+        assert isinstance(position, Point2)
+        assert isinstance(range_model, RangeNoiseModel)
+
+        super().__init__(name, range_model)
+        self._position = position
+
+    def __str__(self):
+        return (
+            f"Beacon: {self._name}\n"
+            + f"Groundtruth position: {self._position}\n"
+            + f"Range model: {self._range_model}\n"
+        )
+
+    @property
+    def position(self) -> Point2:
+        return self._position
+
+    def plot(self) -> None:
+        """Plots the beacons's groundtruth position"""
+        cur_position = self.position
+        plt.plot(cur_position.x, cur_position.y, "g*", markersize=10)

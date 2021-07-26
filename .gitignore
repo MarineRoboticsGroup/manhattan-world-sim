@@ -4,6 +4,27 @@ bin-release/
 [Oo]bj/
 [Bb]in/
 
+
+# Jupyter Notebooks #
+#####################
+.ipynb_checkpoints
+
+# Binaries #
+############
+*.pyc
+
+# Python #
+##########
+__pycache__/
+
+# VSCode #
+#############
+.history/
+.vscode/
+.history/*
+.vscode/*
+*.code-workspace
+
 # Other files and folders
 .settings/
 
@@ -13,6 +34,9 @@ bin-release/
 *.ipa
 *.apk
 
+*.code-workspace
+
 # Project files, i.e. `.project`, `.actionScriptProperties` and `.flexProperties`
 # should NOT be excluded as they contain compiler settings and other important
 # information for Eclipse / Flash Builder.
+.idea
