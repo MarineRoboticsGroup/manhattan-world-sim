@@ -40,13 +40,45 @@ class Agent:
     def name(self) -> str:
         return self._name
 
-    @abstractmethod
-    def get_position(self) -> Point2:
+    @property
+    def position(self) -> Point2:
         pass
 
     @abstractmethod
     def plot(self) -> None:
         pass
+
+    def distance_to_other_agent(self, other_agent: Agent) -> float:
+        """Returns the distance between this agent and the other agent
+
+        Args:
+            other_agent (Agent): The other agent
+
+        Returns:
+            float: The distance between the two agents
+        """
+        assert isinstance(other_agent, Agent)
+
+        # get distance between the points of the two agents
+        cur_position = self.position
+        other_position = other_agent.position
+        assert cur_position.frame == other_position.frame
+
+        dist = cur_position.distance(other_position)
+
+        assert isinstance(dist, float)
+        return dist
+
+    def range_measurement_from_dist(self, dist: float) -> RangeMeasurement:
+        """Returns the range measurement generated from a given distance
+
+        Args:
+            dist (float): the distance
+
+        Returns:
+            RangeMeasurement: the range measurement from this distance
+        """
+        return self._range_model.get_range_measurement(dist)
 
 
 class Robot(Agent):

@@ -15,7 +15,7 @@ class RangeNoiseModel:
 
     def __init__(self, measurement_model: Callable[[float], float]):
         assert isinstance(measurement_model, FunctionType)
-        self._noise_func = measurement_model
+        self._measurement_model = measurement_model
 
     def __str__(self):
         return (
@@ -35,11 +35,11 @@ class RangeNoiseModel:
 
     def get_range_measurement(self, true_dist: float) -> RangeMeasurement:
         measurement = self._measurement_model(true_dist)
-        assert isinstance(measurement, float)
-        if measurement < 0:
-            return 0
-        else:
-            return measurement
+        assert isinstance(
+            measurement, RangeMeasurement
+        ), f"Measurement: {measurement},type: {type(measurement)}"
+
+        return measurement
 
 
 class ConstantGaussianRangeNoiseModel(RangeNoiseModel):
