@@ -1,0 +1,3 @@
+[submodule "manhattan/simulator/NF-iSAM"]
+	path = manhattan/simulator/NF-iSAM
+	url = https://github.com/doublestrong/NF-iSAM.git

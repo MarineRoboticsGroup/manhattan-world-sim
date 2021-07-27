@@ -25,6 +25,7 @@ class Agent:
 
         self._name = name
         self._range_model = range_model
+        self._timestep = 0
 
     def get_range_measurement_to_agent(self, other_agent: Agent) -> RangeMeasurement:
         other_loc = other_agent.get_position()
@@ -32,21 +33,60 @@ class Agent:
         cur_loc = self.get_position()
         assert isinstance(cur_loc, Point2)
         dist = cur_loc.distance(other_loc)
-        measurement = self._range_model.get_range_measurement(dist)
+        measurement = self._range_model.get_range_measurement(dist, self.timestep)
         assert isinstance(measurement, RangeMeasurement)
         return measurement
+
+    @property
+    def timestep(self) -> int:
+        return self._timestep
+
+    def _increment_timestep(self) -> None:
+        self._timestep += 1
 
     @property
     def name(self) -> str:
         return self._name
 
-    @abstractmethod
-    def get_position(self) -> Point2:
+    @property
+    def position(self) -> Point2:
         pass
 
     @abstractmethod
     def plot(self) -> None:
         pass
+
+    def distance_to_other_agent(self, other_agent: Agent) -> float:
+        """Returns the distance between this agent and the other agent
+
+        Args:
+            other_agent (Agent): The other agent
+
+        Returns:
+            float: The distance between the two agents
+        """
+        assert isinstance(other_agent, Agent)
+
+        # get distance between the points of the two agents
+        cur_position = self.position
+        other_position = other_agent.position
+        assert cur_position.frame == other_position.frame
+
+        dist = cur_position.distance(other_position)
+
+        assert isinstance(dist, float)
+        return dist
+
+    def range_measurement_from_dist(self, dist: float) -> RangeMeasurement:
+        """Returns the range measurement generated from a given distance
+
+        Args:
+            dist (float): the distance
+
+        Returns:
+            RangeMeasurement: the range measurement from this distance
+        """
+        return self._range_model.get_range_measurement(dist, self.timestep)
 
 
 class Robot(Agent):
@@ -65,7 +105,6 @@ class Robot(Agent):
         super().__init__(name, range_model)
         self._odom_model = odometry_model
         self._pose = start_pose
-        self._timestep = 0
 
     def __str__(self) -> str:
         return (
@@ -91,13 +130,6 @@ class Robot(Agent):
     def heading(self) -> float:
         """Returns the robot's current heading in radians"""
         return self.pose.theta
-
-    @property
-    def timestep(self) -> int:
-        return self._timestep
-
-    def _increment_timestep(self) -> None:
-        self._timestep += 1
 
     def move(self, transform: SE2Pose) -> OdomMeasurement:
         """Moves the robot by the given transform and returns a noisy odometry

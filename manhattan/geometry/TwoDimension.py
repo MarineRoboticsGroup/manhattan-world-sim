@@ -123,7 +123,7 @@ class Point2(object):
 
         diff_x = self.x - other.x
         diff_y = self.y - other.y
-        return np.linalg.norm(diff_x, diff_y)
+        return np.linalg.norm([diff_x, diff_y])
 
     def __add__(self, other: "Point2") -> "Point2":
         """Returns a point that is the sum of this point and the other point
