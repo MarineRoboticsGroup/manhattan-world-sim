@@ -25,6 +25,7 @@ class Agent:
 
         self._name = name
         self._range_model = range_model
+        self._timestep = 0
 
     def get_range_measurement_to_agent(self, other_agent: Agent) -> RangeMeasurement:
         other_loc = other_agent.get_position()
@@ -32,9 +33,16 @@ class Agent:
         cur_loc = self.get_position()
         assert isinstance(cur_loc, Point2)
         dist = cur_loc.distance(other_loc)
-        measurement = self._range_model.get_range_measurement(dist)
+        measurement = self._range_model.get_range_measurement(dist, self.timestep)
         assert isinstance(measurement, RangeMeasurement)
         return measurement
+
+    @property
+    def timestep(self) -> int:
+        return self._timestep
+
+    def _increment_timestep(self) -> None:
+        self._timestep += 1
 
     @property
     def name(self) -> str:
@@ -78,7 +86,7 @@ class Agent:
         Returns:
             RangeMeasurement: the range measurement from this distance
         """
-        return self._range_model.get_range_measurement(dist)
+        return self._range_model.get_range_measurement(dist, self.timestep)
 
 
 class Robot(Agent):
@@ -97,7 +105,6 @@ class Robot(Agent):
         super().__init__(name, range_model)
         self._odom_model = odometry_model
         self._pose = start_pose
-        self._timestep = 0
 
     def __str__(self) -> str:
         return (
@@ -123,13 +130,6 @@ class Robot(Agent):
     def heading(self) -> float:
         """Returns the robot's current heading in radians"""
         return self.pose.theta
-
-    @property
-    def timestep(self) -> int:
-        return self._timestep
-
-    def _increment_timestep(self) -> None:
-        self._timestep += 1
 
     def move(self, transform: SE2Pose) -> OdomMeasurement:
         """Moves the robot by the given transform and returns a noisy odometry

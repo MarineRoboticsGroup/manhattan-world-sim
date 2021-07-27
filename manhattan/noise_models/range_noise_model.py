@@ -25,16 +25,23 @@ class RangeNoiseModel:
         )
 
     @property
-    def measurement_model(self) -> Callable[[float], float]:
+    def measurement_model(self) -> Callable[[float, int], RangeMeasurement]:
         """This returns a function that takes in a distance and returns a measurement.
 
         Returns:
-            Callable[float]: the measurement model
+            Callable[[float, int],RangeMeasurement]: the measurement model function
         """
         return self._measurement_model
 
-    def get_range_measurement(self, true_dist: float) -> RangeMeasurement:
-        measurement = self._measurement_model(true_dist)
+    def get_range_measurement(
+        self, true_dist: float, timestamp: int
+    ) -> RangeMeasurement:
+        assert isinstance(true_dist, float)
+        assert 0 <= true_dist
+        assert isinstance(timestamp, int)
+        assert 0 <= timestamp
+
+        measurement = self._measurement_model(true_dist, timestamp)
         assert isinstance(
             measurement, RangeMeasurement
         ), f"Measurement: {measurement},type: {type(measurement)}"
@@ -60,8 +67,12 @@ class ConstantGaussianRangeNoiseModel(RangeNoiseModel):
         self._stddev = stddev
 
         # define the measurement model
-        measurement_model = lambda true_dist: RangeMeasurement(
-            true_dist, np.random.normal(true_dist + mean, stddev)
+        measurement_model = lambda true_dist, timestamp: RangeMeasurement(
+            true_dist,
+            np.random.normal(true_dist + mean, stddev),
+            mean,
+            stddev,
+            timestamp,
         )
         super().__init__(measurement_model)
 
@@ -96,8 +107,12 @@ class VaryingMeanGaussianRangeNoiseModel(RangeNoiseModel):
         self._stddev = stddev
 
         # define the measurement_model
-        measurement_model = lambda true_dist: RangeMeasurement(
-            true_dist, np.random.normal(slope * true_dist, stddev)
+        measurement_model = lambda true_dist, timestamp: RangeMeasurement(
+            true_dist,
+            np.random.normal(slope * true_dist, stddev),
+            (slope - 1) * true_dist,
+            stddev,
+            timestamp,
         )
         super().__init__(measurement_model)
 

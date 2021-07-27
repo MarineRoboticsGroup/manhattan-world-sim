@@ -19,12 +19,7 @@ from manhattan.noise_models.odom_noise_model import (
     OdomNoiseModel,
     GaussianOdomNoiseModel as GaussOdomSensor,
 )
-from manhattan.simulator.chad_format import (
-    VariableType,
-    Variable,
-    R2Variable,
-    SE2Variable,
-)
+from manhattan.simulator.save_file_utils import save_to_chad_format
 
 
 class SimulationParams(NamedTuple):
@@ -201,6 +196,28 @@ class ManhattanSimulator:
         # make sure everything constructed correctly
         self.check_simulation_state()
 
+    def __str__(self):
+        line = "Simulator Environment\n"
+        line += f"Sim Params: {self.sim_params}\n"
+        line += f"Timestep: {self._timestep}\n"
+
+    @property
+    def file_name(self):
+        line = f"simEnvironment_"
+        line += f"grid{self.sim_params.grid_shape[0]}x"
+        line += f"{self.sim_params.grid_shape[1]}_"
+        line += f"rowCorner{self.sim_params.row_corner_number}_colCorner{self.sim_params.column_corner_number}_"
+        line += f"cellScale{self.sim_params.cell_scale}_"
+        line += f"rangeProb{self.sim_params.range_sensing_prob}_"
+        line += f"rangeRadius{self.sim_params.range_sensing_radius}_"
+        line += f"falseRangeProb{self.sim_params.false_range_data_association_prob}_"
+        line += f"outlierProb{self.sim_params.outlier_prob}_"
+        line += f"loopClosureProb{self.sim_params.loop_closure_prob}_"
+        line += f"loopClosureRadius{self.sim_params.loop_closure_radius}_"
+        line += f"falseLoopClosureProb{self.sim_params.false_loop_closure_prob}_"
+        line += f"timestep{self._timestep}"
+        return line
+
     @property
     def robots(self) -> List[Robot]:
         return self._robots
@@ -234,6 +251,9 @@ class ManhattanSimulator:
             data_dir (str): where to save the data to
             format (str, optional): the format of the data. Defaults to "chad".
         """
+        if not isdir(data_dir):
+            makedirs(data_dir)
+
         if format == "chad":
             self._save_data_as_chad_format(data_dir)
         else:
@@ -386,16 +406,18 @@ class ManhattanSimulator:
         Args:
             data_dir (str): the directory to save everything in
         """
-        if not isdir(data_dir):
-            makedirs(data_dir)
+        save_file = f"{data_dir}/{self.file_name}.txt"
 
-        variables = []
-        factors = []
-        var_truth = {}
-
-        # fill up variables from robot poses and beacon positions
-
-        assert all(isinstance(x, Variable) for x in variables)
+        save_to_chad_format(
+            save_file,
+            self._odom_measurements,
+            self._groundtruth_poses,
+            self._beacons,
+            self._range_measurements,
+            self._range_associations,
+            self._groundtruth_range_associations,
+        )
+        print(f"Saved file to: {save_file}")
 
     ###### Internal methods to move robots ######
 
@@ -530,8 +552,10 @@ class ManhattanSimulator:
         assoc_1 = self._robots[robot_1_idx].name
 
         # get all other robots
+        true_other_assoc = self._robots[robot_2_idx].name
         robot_options = [x.name for x in self._robots]
-        np.delete(robot_options, [robot_1_idx, robot_2_idx])
+        robot_options.remove(assoc_1)
+        robot_options.remove(true_other_assoc)
 
         # get all possible beacon names
         beacon_options = [x.name for x in self._beacons]
@@ -566,11 +590,19 @@ class ManhattanSimulator:
 
         # get all other robots
         robot_options = [x.name for x in self._robots]
-        np.delete(robot_options, [robot_idx])
+        robot_options.remove(assoc_1)
 
         # get all other beacons
+        true_beacon_name = self._beacons[beacon_idx].name
         beacon_options = [x.name for x in self._beacons]
-        np.delete(beacon_options, [beacon_idx])
+        beacon_options.remove(true_beacon_name)
+
+        # concatenate all association options and randomly choose
+        all_options = robot_options + beacon_options
+        assoc_2 = random.choice(all_options)
+
+        # robot_1_name and incorrect_data_association_name
+        return (assoc_1, assoc_2)
 
         # concatenate all association options and randomly choose
         all_options = robot_options + beacon_options
@@ -601,6 +633,8 @@ class ManhattanSimulator:
         assert isinstance(measurement, RangeMeasurement)
         assert 0.0 <= measurement.true_distance <= self.sim_params.range_sensing_radius
 
+        self._range_measurements.append(measurement)
+
         # fill in the measurement info
         true_association = (
             self._robots[robot_1_idx].name,
@@ -618,7 +652,6 @@ class ManhattanSimulator:
         assert isinstance(measurement_association, tuple)
         assert all(isinstance(x, str) for x in measurement_association)
 
-        self._range_measurements.append(measurement)
         self._range_associations.append(measurement_association)
 
         # fill in the groundtruth association

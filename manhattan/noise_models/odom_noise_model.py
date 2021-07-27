@@ -5,12 +5,12 @@ from ..measurement.odom_measurement import OdomMeasurement
 from ..geometry.TwoDimension import SE2Pose
 
 
-class OdomNoiseModel():
+class OdomNoiseModel:
     """
     A base odometry noise model.
     """
 
-    def __init__(self, ):
+    def __init__(self,):
         """
         Initialize this noise model.
         """
@@ -44,9 +44,7 @@ class GaussianOdomNoiseModel(OdomNoiseModel):
     """
 
     def __init__(
-        self,
-        mean: np.ndarray = np.zeros(3),
-        covariance: np.ndarray = np.eye(3)/50.0,
+        self, mean: np.ndarray = np.zeros(3), covariance: np.ndarray = np.eye(3) / 50.0,
     ):
         """Initializes the gaussian additive noise model
 
@@ -96,14 +94,20 @@ class GaussianOdomNoiseModel(OdomNoiseModel):
         assert isinstance(movement, SE2Pose)
 
         # this is the constant component from the gaussian noise
-        mean_offset = SE2Pose.by_exp_map(self._mean, local_frame='temp', base_frame=movement.local_frame)
+        mean_offset = SE2Pose.by_exp_map(
+            self._mean, local_frame="temp", base_frame=movement.local_frame
+        )
 
         # this is the random component from the gaussian noise
         noise_sample = np.random.multivariate_normal(np.zeros(3), self._covariance)
-        noise_offset = SE2Pose.by_exp_map(noise_sample, local_frame=movement.local_frame, base_frame='temp')
+        noise_offset = SE2Pose.by_exp_map(
+            noise_sample, local_frame=movement.local_frame, base_frame="temp"
+        )
 
         # TODO investigate this bold claim alan made
         # because we're in 2D rotations commute so we don't need to think about
         # the order of operations???
         noisy_odom_measurement = movement * mean_offset * noise_offset
-        return OdomMeasurement(movement, noisy_odom_measurement)
+        return OdomMeasurement(
+            movement, noisy_odom_measurement, self._mean, self._covariance
+        )
