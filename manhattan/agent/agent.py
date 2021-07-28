@@ -175,16 +175,16 @@ class Robot(Agent):
 
         heading_tol = 1e-8
         if abs(self.heading) < heading_tol:
-            plt.plot(cur_position.x, cur_position.y, "b>", markersize=10)
+            return plt.plot(cur_position.x, cur_position.y, "b>", markersize=10)
         elif abs(self.heading - (np.pi / 2.0)) < heading_tol:
-            plt.plot(cur_position.x, cur_position.y, "b^", markersize=10)
+            return plt.plot(cur_position.x, cur_position.y, "b^", markersize=10)
         elif (
             abs(self.heading + np.pi) < heading_tol
             or abs(self.heading - np.pi) < heading_tol
         ):
-            plt.plot(cur_position.x, cur_position.y, "b<", markersize=10)
+            return plt.plot(cur_position.x, cur_position.y, "b<", markersize=10)
         elif abs(self.heading + (np.pi / 2.0)) < heading_tol:
-            plt.plot(cur_position.x, cur_position.y, "bv", markersize=10)
+            return plt.plot(cur_position.x, cur_position.y, "bv", markersize=10)
         else:
             print(f"Unhandled heading: {self.heading}")
             raise NotImplementedError
@@ -215,4 +215,4 @@ class Beacon(Agent):
     def plot(self) -> None:
         """Plots the beacons's groundtruth position"""
         cur_position = self.position
-        plt.plot(cur_position.x, cur_position.y, "g*", markersize=10)
+        return plt.plot(cur_position.x, cur_position.y, "g*", markersize=10)
