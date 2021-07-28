@@ -5,12 +5,13 @@ import numpy as np
 
 from manhattan.noise_models.range_noise_model import RangeNoiseModel
 from manhattan.noise_models.odom_noise_model import OdomNoiseModel
+from manhattan.noise_models.loop_closure_model import LoopClosureModel
 from manhattan.measurement.range_measurement import RangeMeasurement
 from manhattan.measurement.odom_measurement import OdomMeasurement
+from manhattan.measurement.loop_closure import LoopClosure
 from manhattan.geometry.TwoDimension import SE2Pose, Point2
 
 
-# TODO need to make classes hashable!
 class Agent:
     """
     This class represents a general agent. In our simulator this is either a
@@ -96,14 +97,17 @@ class Robot(Agent):
         start_pose: SE2Pose,
         range_model: RangeNoiseModel,
         odometry_model: OdomNoiseModel,
+        loop_closure_model: LoopClosureModel
     ):
         assert isinstance(name, str)
         assert isinstance(start_pose, SE2Pose)
         assert isinstance(range_model, RangeNoiseModel)
         assert isinstance(odometry_model, OdomNoiseModel)
+        assert isinstance(loop_closure_model, LoopClosureModel)
 
         super().__init__(name, range_model)
         self._odom_model = odometry_model
+        self._loop_closure_model = loop_closure_model
         self._pose = start_pose
 
     def __str__(self) -> str:
@@ -130,6 +134,19 @@ class Robot(Agent):
     def heading(self) -> float:
         """Returns the robot's current heading in radians"""
         return self.pose.theta
+
+    def get_loop_closure_measurement(self, other_pose:SE2Pose) -> LoopClosure:
+        """Gets a loop closure measurement to another pose based on the Robot's
+        loop closure model
+
+        Args:
+            other_pose (SE2Pose): the pose to measure the loop closure to
+
+        Returns:
+            LoopClosure: the loop closure measurement
+        """
+        assert isinstance(other_pose, SE2Pose)
+        return self._loop_closure_model.get_relative_pose_measurement(self.pose, other_pose, self.timestep)
 
     def move(self, transform: SE2Pose) -> OdomMeasurement:
         """Moves the robot by the given transform and returns a noisy odometry

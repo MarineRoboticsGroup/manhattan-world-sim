@@ -1,13 +1,13 @@
 from abc import abstractmethod
 import numpy as np
 
-from manhattan.measurement.odom_measurement import OdomMeasurement
+from manhattan.measurement.loop_closure import LoopClosure
 from manhattan.geometry.TwoDimension import SE2Pose
 
 
-class OdomNoiseModel:
+class LoopClosureModel:
     """
-    A base odometry noise model.
+    A base noisy loop closure model.
     """
 
     def __init__(self,):
@@ -19,25 +19,34 @@ class OdomNoiseModel:
 
     def __str__(self):
         return (
-            f"Generic Odometry\n"
+            f"Generic Loop Closure Model\n"
             + f"Covariance: {self._covariance.flatten()}\n"
             + f"Mean: {self._mean}\n"
         )
 
     @abstractmethod
-    def get_odometry_measurement(self, movement: SE2Pose) -> OdomMeasurement:
-        """Get a noisy odometry measurement from the true odometry.
+    def get_relative_pose_measurement(
+        self, pose_1: SE2Pose, pose_2: SE2Pose, timestamp: int
+    ) -> LoopClosure:
+        """Takes a two poses, and returns a loop closure measurement based on
+        the relative pose from pose_1 to pose_2 and the determined sensor model.
+
+        Note: we get a little hacky with the frame naming just to allow for
+        multiplication of all of these noises
 
         Args:
-            movement (SE2Pose): the movement performed by the robot
+            pose_1 (SE2Pose): the first pose
+            pose_2 (SE2Pose): the second pose
+            timestamp (int): the timestamp of the measurement
 
         Returns:
-            OdomMeasurement: the noisy measurement of the movement
+            LoopClosure: A noisy measurement of the relative pose from pose_1 to
+                pose_2
         """
         pass
 
 
-class GaussianOdomNoiseModel(OdomNoiseModel):
+class GaussianLoopClosureModel(LoopClosureModel):
     """
     This is a simple Gaussian noise model for the robot odometry. This assumes
     that the noise is additive gaussian and constant in time and distance moved.
@@ -55,16 +64,16 @@ class GaussianOdomNoiseModel(OdomNoiseModel):
                 with entries corresponding to the mean vector. Defaults to
                 np.eye(3)/10.0.
         """
-        assert isinstance(covariance, np.ndarray)
-        assert covariance.shape == (3, 3)
         assert isinstance(mean, np.ndarray)
         assert mean.shape == (3,)
+        assert isinstance(covariance, np.ndarray)
+        assert covariance.shape == (3, 3)
         self._mean = mean
         self._covariance = covariance
 
     def __str__(self):
         return (
-            f"Gaussian Additive Odometry\n"
+            f"Gaussian Additive Loop Closure Model\n"
             + f"Covariance: {self._covariance.flatten()}\n"
             + f"Mean: {self._mean}\n"
         )
@@ -77,8 +86,10 @@ class GaussianOdomNoiseModel(OdomNoiseModel):
     def mean(self):
         return self._mean
 
-    def get_odometry_measurement(self, movement: SE2Pose) -> OdomMeasurement:
-        """Takes the groundtruth movement performed and then perturbs it by
+    def get_relative_pose_measurement(
+        self, pose_1: SE2Pose, pose_2: SE2Pose, timestamp: int
+    ) -> LoopClosure:
+        """Takes a two poses, gets the relative pose and then perturbs it by
         transformation randomly sampled from a Gaussian distribution and passed
         through the exponential map
 
@@ -86,28 +97,41 @@ class GaussianOdomNoiseModel(OdomNoiseModel):
         multiplication of all of these noises
 
         Args:
-            movement (SE2Pose): the true movement performed by the robot
+            pose_1 (SE2Pose): the first pose
+            pose_2 (SE2Pose): the second pose
+            timestamp (int): the timestamp of the measurement
 
         Returns:
-            SE2Pose: A noisy measurement of the movement passed in
+            SE2Pose: A noisy measurement of the relative pose from pose_1 to
+                pose_2
         """
-        assert isinstance(movement, SE2Pose)
+        assert isinstance(pose_1, SE2Pose)
+        assert isinstance(pose_2, SE2Pose)
+        assert isinstance(timestamp, int)
+        assert 0 <= timestamp
+
+        rel_pose = pose_1.transform_to(pose_2)
 
         # this is the constant component from the gaussian noise
         mean_offset = SE2Pose.by_exp_map(
-            self._mean, local_frame="temp", base_frame=movement.local_frame
+            self._mean, local_frame="temp", base_frame=rel_pose.local_frame
         )
 
         # this is the random component from the gaussian noise
         noise_sample = np.random.multivariate_normal(np.zeros(3), self._covariance)
         noise_offset = SE2Pose.by_exp_map(
-            noise_sample, local_frame=movement.local_frame, base_frame="temp"
+            noise_sample, local_frame=rel_pose.local_frame, base_frame="temp"
         )
 
         # TODO investigate this bold claim alan made
         # because we're in 2D rotations commute so we don't need to think about
         # the order of operations???
-        noisy_odom_measurement = movement * mean_offset * noise_offset
-        return OdomMeasurement(
-            movement, noisy_odom_measurement, self._mean, self._covariance
+        noisy_pose_measurement = rel_pose * mean_offset * noise_offset
+        return LoopClosure(
+            pose_1,
+            pose_2,
+            noisy_pose_measurement,
+            timestamp,
+            self._mean,
+            self._covariance,
         )

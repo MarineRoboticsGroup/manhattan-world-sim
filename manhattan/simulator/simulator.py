@@ -10,6 +10,7 @@ from manhattan.agent.agent import Robot, Beacon
 from manhattan.geometry.TwoDimension import SE2Pose, Point2
 from manhattan.measurement.range_measurement import RangeMeasurement
 from manhattan.measurement.odom_measurement import OdomMeasurement
+from manhattan.measurement.loop_closure import LoopClosure
 from manhattan.noise_models.range_noise_model import (
     RangeNoiseModel,
     ConstantGaussianRangeNoiseModel as ConstGaussRangeSensor,
@@ -18,6 +19,10 @@ from manhattan.noise_models.range_noise_model import (
 from manhattan.noise_models.odom_noise_model import (
     OdomNoiseModel,
     GaussianOdomNoiseModel as GaussOdomSensor,
+)
+from manhattan.noise_models.loop_closure_model import (
+    LoopClosureModel,
+    GaussianLoopClosureModel,
 )
 from manhattan.simulator.save_file_utils import save_to_chad_format
 
@@ -137,10 +142,14 @@ class ManhattanSimulator:
         """Does some simple checking to make sure everything is in order in the
         simulation
         """
-        assert isinstance(self._robots, list)
-        assert isinstance(self._beacons, list)
 
-        # nested lists for each robot
+        # check that robot and beacon lists are constructed correctly
+        assert isinstance(self._robots, list)
+        assert all(isinstance(x, Robot) for x in self._robots)
+        assert isinstance(self._beacons, list)
+        assert all(isinstance(x, Beacon) for x in self._beacons)
+
+        # nested lists for odometry and poses
         assert isinstance(self._odom_measurements, list)
         for odometry_chain in self._odom_measurements:
             assert isinstance(odometry_chain, list)
@@ -150,19 +159,17 @@ class ManhattanSimulator:
         for true_pose_chain in self._groundtruth_poses:
             assert isinstance(true_pose_chain, list)
             assert all(isinstance(x, SE2Pose) for x in true_pose_chain)
+            assert len(true_pose_chain) == (self.timestep) + 1
 
         # single lists
         assert isinstance(self._loop_closures, list)
+        assert all(isinstance(x, LoopClosure) for x in self._loop_closures)
         assert isinstance(self._range_measurements, list)
         assert all(isinstance(x, RangeMeasurement) for x in self._range_measurements)
         assert isinstance(self._range_associations, list)
         assert all(isinstance(x, tuple) for x in self._range_associations)
         assert isinstance(self._groundtruth_range_associations, list)
         assert all(isinstance(x, tuple) for x in self._groundtruth_range_associations)
-
-        # check that robot and beacon lists are constructed correctly
-        assert all(isinstance(x, Robot) for x in self._robots)
-        assert all(isinstance(x, Beacon) for x in self._beacons)
 
         assert len(self._odom_measurements) == len(self._robots)
 
@@ -192,6 +199,7 @@ class ManhattanSimulator:
         self._range_measurements = []
         self._range_associations = []
         self._groundtruth_range_associations = []
+        self._sensed_beacons = set()
 
         # make sure everything constructed correctly
         self.check_simulation_state()
@@ -206,16 +214,18 @@ class ManhattanSimulator:
         line = f"simEnvironment_"
         line += f"grid{self.sim_params.grid_shape[0]}x"
         line += f"{self.sim_params.grid_shape[1]}_"
-        line += f"rowCorner{self.sim_params.row_corner_number}_colCorner{self.sim_params.column_corner_number}_"
+        line += f"rowCorner{self.sim_params.row_corner_number}_"
+        line += f"colCorner{self.sim_params.column_corner_number}_"
         line += f"cellScale{self.sim_params.cell_scale}_"
         line += f"rangeProb{self.sim_params.range_sensing_prob}_"
-        line += f"rangeRadius{self.sim_params.range_sensing_radius}_"
+        line += f"rangeRadius{self.sim_params.range_sensing_radius:.0f}_"
         line += f"falseRangeProb{self.sim_params.false_range_data_association_prob}_"
         line += f"outlierProb{self.sim_params.outlier_prob}_"
         line += f"loopClosureProb{self.sim_params.loop_closure_prob}_"
-        line += f"loopClosureRadius{self.sim_params.loop_closure_radius}_"
+        line += f"loopClosureRadius{self.sim_params.loop_closure_radius:.0f}_"
         line += f"falseLoopClosureProb{self.sim_params.false_loop_closure_prob}_"
         line += f"timestep{self._timestep}"
+        line = line.replace(".", "")
         return line
 
     @property
@@ -262,6 +272,7 @@ class ManhattanSimulator:
     def random_step(self):
         self._move_robots_randomly()
         self._update_range_measurements()
+        self._update_loop_closures()
 
         # make sure everything was filled in correctly
         self.check_simulation_state()
@@ -286,6 +297,7 @@ class ManhattanSimulator:
         start_pose: SE2Pose = None,
         range_model: RangeNoiseModel = ConstGaussRangeSensor(),
         odom_model: OdomNoiseModel = GaussOdomSensor(),
+        loop_closure_model: LoopClosureModel = GaussianLoopClosureModel(),
     ):
         """Add a robot to the simulator. If no pose is provided, a random pose
         is sampled from the environment.
@@ -296,11 +308,14 @@ class ManhattanSimulator:
                 model. Defaults to ConstGaussRangeSensor().
             odom_model (OdomNoiseModel, optional): the robot's odometry model.
                 Defaults to GaussOdomSensor().
+            LoopClosureModel (LoopClosureModel, optional): the robot's loop
+                closure model. Defaults to GaussianLoopClosureModel().
         """
 
         assert isinstance(start_pose, SE2Pose) or start_pose is None
         assert isinstance(range_model, RangeNoiseModel)
         assert isinstance(odom_model, OdomNoiseModel)
+        assert isinstance(loop_closure_model, LoopClosureModel)
 
         # if no pose passed in, sample a random pose
         name = f"Robot {len(self._robots)}"
@@ -314,7 +329,7 @@ class ManhattanSimulator:
             start_pose
         ), f"Robot pose {start_pose} is not feasible"
 
-        robot = Robot(name, start_pose, range_model, odom_model)
+        robot = Robot(name, start_pose, range_model, odom_model, loop_closure_model)
         self._robots.append(robot)
 
         # add to lists to track measurements
@@ -528,6 +543,45 @@ class ManhattanSimulator:
                         cur_robot_id, beacon_id, measure
                     )
 
+    def _update_loop_closures(self):
+        """Possibly add loop closures for each robot.
+
+        Loop closures are of form (pose_1, pose_2)
+        """
+
+        # can definitely make this faster using numpy or something to
+        # compute the distances between all pairs of poses
+
+        for cur_robot_id in range(self.num_robots):
+
+            # roll dice to see if we can get a loop closure here. If greater than
+            # this value then no loop closure
+            if np.random.rand() > self.sim_params.loop_closure_prob and False:
+                continue
+
+            cur_robot = self._robots[cur_robot_id]
+            cur_pose = cur_robot.pose
+            possible_loop_closures = []
+
+            # gather up list of closure candidates
+            for loop_clos_robot_id in range(self.num_robots):
+
+                # ignore the most recent pose, as it shouldn't be considered for
+                # loop closures
+                candidate_pose_chain = self._groundtruth_poses[loop_clos_robot_id][:-1]
+                for cand_pose in candidate_pose_chain:
+                    if (
+                        cur_pose.distance_to_pose(cand_pose)
+                        < self.sim_params.loop_closure_radius
+                    ):
+                        possible_loop_closures.append(cand_pose)
+
+            randomly_selected_pose = random.choice(possible_loop_closures)
+            loop_closure = cur_robot.get_loop_closure_measurement(
+                randomly_selected_pose
+            )
+            self._loop_closures.append(loop_closure)
+
     def _get_incorrect_robot_to_robot_range_association(
         self, robot_1_idx: int, robot_2_idx: int
     ) -> Tuple[str, str]:
@@ -592,17 +646,16 @@ class ManhattanSimulator:
         robot_options = [x.name for x in self._robots]
         robot_options.remove(assoc_1)
 
-        # get all other beacons
+        # get all other beacons that have already been sensed
         true_beacon_name = self._beacons[beacon_idx].name
-        beacon_options = [x.name for x in self._beacons]
-        beacon_options.remove(true_beacon_name)
+        beacon_options = [x.name for x in self._beacons if x in self._sensed_beacons]
 
-        # concatenate all association options and randomly choose
-        all_options = robot_options + beacon_options
-        assoc_2 = random.choice(all_options)
+        if true_beacon_name in beacon_options:
+            beacon_options.remove(true_beacon_name)
 
-        # robot_1_name and incorrect_data_association_name
-        return (assoc_1, assoc_2)
+        # if no other beacons have been sensed just return true association
+        if len(beacon_options) == 0:
+            return (assoc_1, true_beacon_name)
 
         # concatenate all association options and randomly choose
         all_options = robot_options + beacon_options
@@ -682,6 +735,7 @@ class ManhattanSimulator:
             self._robots[robot_idx].name,
             self._beacons[beacon_idx].name,
         )
+        self._sensed_beacons.add(self._beacons[beacon_idx])
 
         # randomly sample to see if this is a false data association range measurement
         if np.random.rand() < self.sim_params.false_range_data_association_prob:

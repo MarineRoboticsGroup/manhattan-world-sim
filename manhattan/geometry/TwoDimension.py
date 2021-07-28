@@ -788,8 +788,8 @@ class SE2Pose(object):
         )
 
     def transform_to(self, other):
-        """Returns the coordinate frame of this pose with respect to the given
-        pose.
+        """Returns the coordinate frame of the other pose in the coordinate
+        frame of this pose.
 
         e.g.    T_0_to_1 -> T_0_to_2
                 = inv(T_0_to_1) * T_0_to_2
@@ -840,6 +840,25 @@ class SE2Pose(object):
         assert isinstance(base_point, Point2)
         return self.inverse() * base_point
 
+    def distance_to_pose(self, other: "SE2Pose") -> float:
+        """Returns the distance between this pose and another pose
+
+        Args:
+            other (SE2Pose): the other pose
+
+        Returns:
+            float: the distance between this pose and the other pose
+        """
+        assert isinstance(other, SE2Pose)
+
+        cur_position = self.translation
+        other_position = other.translation
+        assert cur_position.frame == other_position.frame
+
+        dist = cur_position.distance(other_position)
+
+        assert isinstance(dist, float)
+        return dist
 
 
     def __mul__(self, other):

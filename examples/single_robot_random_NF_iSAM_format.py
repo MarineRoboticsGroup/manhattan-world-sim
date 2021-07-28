@@ -27,7 +27,7 @@ sim.add_beacons(num_beacons)
 num_timesteps = 100
 for _ in range(num_timesteps):
     sim.random_step()
-    sim.plot_current_state(show_grid=True)
+    # sim.plot_current_state(show_grid=True)
 
 data_dir = '/home/alan/'
 sim.save_simulation_data(data_dir, format='chad')
