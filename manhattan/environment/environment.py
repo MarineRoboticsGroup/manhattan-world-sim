@@ -616,7 +616,7 @@ class ManhattanWorld:
 
     ####### visualization #############
 
-    def plot_environment(self):
+    def plot_environment(self, ax):
         assert self._robot_feasibility.shape == (self._num_x_pts, self._num_y_pts)
 
         # get rows and cols that the robot is allowed to travel on
@@ -635,8 +635,8 @@ class ManhattanWorld:
         min_y = np.min(valid_y)
 
         # plot the travelable rows and columns
-        plt.vlines(valid_x, min_y, max_y)
-        plt.hlines(valid_y, min_x, max_x)
+        ax.vlines(valid_x, min_y, max_y)
+        ax.hlines(valid_y, min_x, max_x)
 
         for i in range(self._num_x_pts):
             for j in range(self._num_y_pts):
@@ -649,7 +649,7 @@ class ManhattanWorld:
                     continue
 
                 if self._robot_feasibility[i, j]:
-                    plt.plot(self._xv[i, j], self._yv[i, j], "ro", markersize=3)
+                    ax.plot(self._xv[i, j], self._yv[i, j], "ro", markersize=3)
                 else:
-                    plt.plot(self._xv[i, j], self._yv[i, j], "go", markersize=3)
+                    ax.plot(self._xv[i, j], self._yv[i, j], "go", markersize=3)
 

@@ -2,6 +2,7 @@ from typing import NamedTuple, Tuple, List
 import random
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 from os.path import isdir, isfile, join
 from os import mkdir, makedirs
 
@@ -204,6 +205,14 @@ class ManhattanSimulator:
         # make sure everything constructed correctly
         self.check_simulation_state()
 
+        # for visualizing things
+        self._robot_plot_objects = []
+        self._beacon_plot_objects = []
+        self.fig, self.ax = plt.subplots()
+        x_lb, y_lb, x_ub, y_ub = self._env.bounds
+        self.ax.set_xlim(x_lb - 1, x_ub + 1)
+        self.ax.set_ylim(y_lb - 1, y_ub + 1)
+
     def __str__(self):
         line = "Simulator Environment\n"
         line += f"Sim Params: {self.sim_params}\n"
@@ -372,46 +381,6 @@ class ManhattanSimulator:
 
     def increment_timestep(self):
         self._timestep += 1
-
-    #### Visualization and text output methods ####
-
-    def print_simulator_state(self):
-        print(f"Timestep: {self._timestep}")
-        self.print_robot_states()
-        self.print_beacon_states()
-
-    def print_robot_states(self):
-        for robot in self.robots:
-            print(robot)
-
-    def print_beacon_states(self):
-        for beacon in self._beacons:
-            print(beacon)
-
-    # TODO refine this so have an animation option
-    def plot_current_state(self, show_grid=False):
-        """Plots the current state of the simulator.
-
-        Args:
-            show_grid (bool, optional): whether to show the grid. Defaults to
-            False.
-        """
-
-        if show_grid:
-            self._env.plot_environment()
-
-        for robot in self._robots:
-            robot.plot()
-        for beacon in self._beacons:
-            beacon.plot()
-
-        x_lb, y_lb, x_ub, y_ub = self._env.bounds
-        plt.xlim(x_lb - 1, x_ub + 1)
-        plt.ylim(y_lb - 1, y_ub + 1)
-
-        plt.show(block=False)
-        plt.pause(0.03)
-        plt.clf()
 
     ##### Internal methods to save data #####
 
@@ -753,4 +722,74 @@ class ManhattanSimulator:
 
         # fill in the groundtruth info
         self._groundtruth_range_associations.append(true_association)
+
+    #### print state of simulator methods ####
+
+    def print_simulator_state(self):
+        print(f"Timestep: {self._timestep}")
+        self.print_robot_states()
+        self.print_beacon_states()
+
+    def print_robot_states(self):
+        for robot in self.robots:
+            print(robot)
+
+    def print_beacon_states(self):
+        for beacon in self._beacons:
+            print(beacon)
+
+    #### visualize simulator state methods ####
+
+    def plot_grid(self):
+        self._env.plot_environment(self.ax)
+
+    def plot_beacons(self):
+        """Plots all of the beacons
+        """
+        assert len(self._beacon_plot_objects) == 0, (
+            "Should not be plotting over existing beacons."
+            + " This function should only be called once."
+        )
+
+        for i, beacon in enumerate(self._beacons):
+            beacon_plot_obj = beacon.plot()
+            self._beacon_plot_objects.append(beacon_plot_obj[0])
+
+    def plot_robot_states(self):
+        """Plots the current robot states
+        """
+
+        # delete all of the already shown robot poses from the plot
+        # this allows us to more efficiently update the animation
+        for robot_plot_obj in self._robot_plot_objects:
+            assert isinstance(robot_plot_obj, matplotlib.lines.Line2D)
+            self.ax.lines.remove(robot_plot_obj)
+
+        self._robot_plot_objects.clear()
+
+        for i, robot in enumerate(self._robots):
+            rob_plot_obj = robot.plot()
+            self._robot_plot_objects.append(rob_plot_obj[0])
+
+    def show_plot(self, animation: bool = False):
+        """ shows everything that's been plotted
+
+        Args:
+            animation (bool): if True, just gives a minor pause. If False,
+                shows the plot and waits for the user to close it.
+        """
+        if animation:
+            plt.pause(0.02)
+        else:
+            plt.show(block=True)
+            self._robot_plot_objects.clear()
+            self._beacon_plot_objects.clear()
+
+            self.fig, self.ax = plt.subplots()
+            x_lb, y_lb, x_ub, y_ub = self._env.bounds
+            self.ax.set_xlim(x_lb - 1, x_ub + 1)
+            self.ax.set_ylim(y_lb - 1, y_ub + 1)
+
+    def close_plot(self):
+        self.fig.close()
 
