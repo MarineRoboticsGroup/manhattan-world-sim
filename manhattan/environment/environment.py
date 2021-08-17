@@ -387,7 +387,6 @@ class ManhattanWorld:
 
         # randomly sample one of the vertices
         vert_sample = choice(feasible_verts)
-        # vert_sample = feasible_verts[vert_sample_idx]
 
         i, j = vert_sample
         position = Point2(self._xv[i, j], self._yv[i, j], frame=frame)

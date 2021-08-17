@@ -1,3 +1,6 @@
 [submodule "manhattan/simulator/NF-iSAM"]
 	path = manhattan/simulator/NF-iSAM
 	url = https://github.com/doublestrong/NF-iSAM.git
+[submodule "profiling/FlameGraph"]
+	path = profiling/FlameGraph
+	url = git@github.com:brendangregg/FlameGraph.git

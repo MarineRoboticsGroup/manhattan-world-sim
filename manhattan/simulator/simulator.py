@@ -523,9 +523,9 @@ class ManhattanSimulator:
 
         for cur_robot_id in range(self.num_robots):
 
-            # roll dice to see if we can get a loop closure here. If greater than
-            # this value then no loop closure
-            if np.random.rand() > self.sim_params.loop_closure_prob and False:
+            # roll dice to see if we can get a loop closure here. If greater
+            # than this value then no loop closure
+            if np.random.rand() > self.sim_params.loop_closure_prob:
                 continue
 
             cur_robot = self._robots[cur_robot_id]
