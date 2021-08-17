@@ -1,6 +1,5 @@
 from copy import deepcopy
 
-import random
 import itertools
 import numpy as np
 from typing import Tuple, List, Union
@@ -8,6 +7,7 @@ import matplotlib.pyplot as plt
 
 from manhattan.geometry.TwoDimension import SE2Pose, Point2
 from manhattan.agent.agent import Robot
+from manhattan.utils.sample_utils import choice
 
 
 def _find_nearest(
@@ -386,7 +386,7 @@ class ManhattanWorld:
             return None
 
         # randomly sample one of the vertices
-        vert_sample = random.choice(feasible_verts)
+        vert_sample = choice(feasible_verts)
         # vert_sample = feasible_verts[vert_sample_idx]
 
         i, j = vert_sample

@@ -1,5 +1,4 @@
 from typing import NamedTuple, Tuple, List
-import random
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
@@ -26,6 +25,7 @@ from manhattan.noise_models.loop_closure_model import (
     GaussianLoopClosureModel,
 )
 from manhattan.simulator.save_file_utils import save_to_chad_format
+from manhattan.utils.sample_utils import choice
 
 
 class SimulationParams(NamedTuple):
@@ -390,7 +390,7 @@ class ManhattanSimulator:
         Args:
             data_dir (str): the directory to save everything in
         """
-        save_file = f"{data_dir}/{self.file_name}.txt"
+        save_file = f"{data_dir}/{self.file_name}.fg"
 
         save_to_chad_format(
             save_file,
@@ -431,7 +431,7 @@ class ManhattanSimulator:
             assert len(possible_moves) > 0
 
             # randomly select a move from the list
-            move = random.choice(possible_moves)
+            move = choice(possible_moves)
             move_pt, bearing = move
 
             # get the move in the robot local frame
@@ -545,7 +545,7 @@ class ManhattanSimulator:
                     ):
                         possible_loop_closures.append(cand_pose)
 
-            randomly_selected_pose = random.choice(possible_loop_closures)
+            randomly_selected_pose = choice(possible_loop_closures)
             loop_closure = cur_robot.get_loop_closure_measurement(
                 randomly_selected_pose
             )
@@ -585,7 +585,7 @@ class ManhattanSimulator:
 
         # concatenate all association options and randomly choose
         all_options = robot_options + beacon_options
-        assoc_2 = random.choice(all_options)
+        assoc_2 = choice(all_options)
 
         # robot_1_name and incorrect_data_association_name
         return (assoc_1, assoc_2)
@@ -628,7 +628,7 @@ class ManhattanSimulator:
 
         # concatenate all association options and randomly choose
         all_options = robot_options + beacon_options
-        assoc_2 = random.choice(all_options)
+        assoc_2 = choice(all_options)
 
         # robot_1_name and incorrect_data_association_name
         return (assoc_1, assoc_2)
