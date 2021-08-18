@@ -4,9 +4,7 @@
 # https://autobencoder.com/2020-08-24-conda-actions/
 
 name: mypy
-
 on: [push]
-
 jobs:
   build:
     runs-on: ubuntu-latest

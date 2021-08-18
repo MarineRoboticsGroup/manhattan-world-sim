@@ -657,7 +657,7 @@ class ManhattanSimulator:
         return (assoc_1, assoc_2)
 
     def _add_robot_to_robot_range_measurement(
-        self, robot_1_idx: int, robot_2_idx: int, measurement: RangeMeasurement,
+        self, robot_1_idx: int, robot_2_idx: int, measurement: RangeMeasurement
     ):
         """Add a new range measurement between two robots. Randomly chooses if
         the data association is incorrect. If incorrect, the association can be
@@ -703,7 +703,7 @@ class ManhattanSimulator:
         self._groundtruth_range_associations.append(true_association)
 
     def _add_robot_to_beacon_range_measurement(
-        self, robot_idx: int, beacon_idx: int, measurement: RangeMeasurement,
+        self, robot_idx: int, beacon_idx: int, measurement: RangeMeasurement
     ) -> None:
         """ Add a new range measurement between a robot and a beacon. Randomly
         chooses if the data association is incorrect. If incorrect, the
@@ -815,4 +815,3 @@ class ManhattanSimulator:
 
     def close_plot(self):
         self.fig.close()
-

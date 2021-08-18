@@ -1,11 +1,13 @@
 import os
 from os.path import join, expanduser
 import sys
+
 sys.path.insert(0, os.path.abspath(".."))
 
 from manhattan.simulator.simulator import ManhattanSimulator, SimulationParams
 
 import numpy as np
+
 np.random.seed(999)
 
 sim_args = SimulationParams(
@@ -34,8 +36,6 @@ for _ in range(num_timesteps):
     sim.random_step()
     # sim.plot_current_state(show_grid=True)
 
-data_dir = '/home/alan/'
-data_dir = expanduser(
-    join("~", "data", "example_factor_graphs")
-)
-sim.save_simulation_data(data_dir, format='chad')
+data_dir = "/home/alan/"
+data_dir = expanduser(join("~", "data", "example_factor_graphs"))
+sim.save_simulation_data(data_dir, format="chad")

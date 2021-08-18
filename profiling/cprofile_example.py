@@ -42,7 +42,7 @@ for _ in tqdm(range(num_timesteps)):
 
 pr.disable()
 s = io.StringIO()
-sort_by = 'cumtime'
+sort_by = "cumtime"
 ps = pstats.Stats(pr, stream=s).sort_stats(sort_by)
-ps.print_stats(.1)
+ps.print_stats(0.1)
 print(s.getvalue())

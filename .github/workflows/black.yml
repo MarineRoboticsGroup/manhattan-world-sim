@@ -1,0 +1,15 @@
+# this is a workflow to check the formatting of the code to make sure that the
+# commits adhere to the black styling. Code was pulled from following source:
+# https://github.com/rickstaa/action-black/
+
+name: black-action
+on: [push]
+jobs:
+  linter_name:
+    name: runner / black formatter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: rickstaa/action-black@v1
+        with:
+          black_args: ". --check"

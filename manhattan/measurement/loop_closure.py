@@ -69,4 +69,3 @@ class LoopClosure:
         returns the covariance of the measurement
         """
         return self._covariance
-

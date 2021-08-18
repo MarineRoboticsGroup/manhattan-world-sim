@@ -338,9 +338,7 @@ class Rot2(object):
     @staticmethod
     def dist(x1: Rot2, x2: Rot2):
         """chordal distance between x1 and x2 which are np.ndarray forms of Rot2"""
-        return np.linalg.norm(
-            (x1.inverse() * x2).log_map()
-        )
+        return np.linalg.norm((x1.inverse() * x2).log_map())
 
     def log_map(self):
         """
@@ -496,7 +494,9 @@ class Rot2(object):
     def __imul__(self, other: Point2) -> Point2:
         pass
 
-    def __imul__(self, other: Union[Rot2, Point2]) -> Union[Rot2, Point2]: # type: ignore
+    def __imul__(  # type: ignore
+        self, other: Union[Rot2, Point2]
+    ) -> Union[Rot2, Point2]:
         if isinstance(other, Rot2):
             assert self.local_frame == other.base_frame
             self._theta += other.theta
@@ -531,14 +531,16 @@ class Rot2(object):
             return same_frames and angle_similar
 
     def __hash__(self) -> int:
-        return hash(str(self.theta), (self.base_frame), (self.local_frame)) # type: ignore
+        return hash(
+            str(self.theta), (self.base_frame), (self.local_frame)
+        )  # type: ignore
 
 
 class SE2Pose(object):
     dim = 3
 
     def __init__(
-        self, x: float, y: float, theta: float, local_frame: str, base_frame: str,
+        self, x: float, y: float, theta: float, local_frame: str, base_frame: str
     ) -> None:
         """A pose in SE(2) defined by translation and rotation
 
@@ -638,7 +640,7 @@ class SE2Pose(object):
             rt = Rot2.by_matrix(R, local_frame, base_frame)
 
             # get translation
-            V = np.array([[sin_theta, cos_theta - 1], [1-cos_theta, sin_theta]]) / w
+            V = np.array([[sin_theta, cos_theta - 1], [1 - cos_theta, sin_theta]]) / w
             u = vector[0:2]
             t = V @ u
             assert len(u) == 2
@@ -879,7 +881,6 @@ class SE2Pose(object):
 
         assert isinstance(dist, float)
         return dist
-
 
     def __mul__(self, other):
         assert isinstance(other, (SE2Pose, Point2))

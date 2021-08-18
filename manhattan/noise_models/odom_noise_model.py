@@ -45,7 +45,7 @@ class GaussianOdomNoiseModel(OdomNoiseModel):
     """
 
     def __init__(
-        self, mean: np.ndarray = np.zeros(3), covariance: np.ndarray = np.eye(3) / 1e8,
+        self, mean: np.ndarray = np.zeros(3), covariance: np.ndarray = np.eye(3) / 1e8
     ) -> None:
         """Initializes the gaussian additive noise model
 

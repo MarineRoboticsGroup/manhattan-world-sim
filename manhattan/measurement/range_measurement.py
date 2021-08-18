@@ -23,7 +23,9 @@ class RangeMeasurement:
         assert isinstance(true_distance, float)
         assert true_distance >= 0.0
         assert isinstance(measured_dist, float)
-        assert measured_dist >= 0.0, f"measured_dist: {measured_dist},true_distance: {true_distance}"
+        assert (
+            measured_dist >= 0.0
+        ), f"measured_dist: {measured_dist},true_distance: {true_distance}"
         assert isinstance(mean, float)
         assert isinstance(stddev, float)
         assert stddev >= 0.0

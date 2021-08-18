@@ -13,7 +13,7 @@ class OdomMeasurement:
         true_odometry: SE2Pose,
         measured_odometry: SE2Pose,
         mean_offset: np.ndarray,
-        covariance: np.ndarray
+        covariance: np.ndarray,
     ) -> None:
         """Construct an odometry measurement
 
@@ -40,7 +40,6 @@ class OdomMeasurement:
         line += f"Mean Offset: {self._mean_offset}\n"
         line += f"Covariance: {self._covariance.flatten()}"
         return line
-
 
     @property
     def true_odom(self) -> SE2Pose:

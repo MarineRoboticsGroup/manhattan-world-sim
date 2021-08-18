@@ -267,7 +267,7 @@ class ManhattanWorld:
         return feasible_neighbor_verts
 
     def get_neighboring_robot_vertices_not_behind_robot(
-        self, robot: Robot,
+        self, robot: Robot
     ) -> List[Tuple[Point2, float]]:
         """get all neighboring vertices to the vertex the robot is at which are
         not behind the given robot
@@ -645,4 +645,3 @@ class ManhattanWorld:
                     ax.plot(self._xv[i, j], self._yv[i, j], "ro", markersize=3)
                 else:
                     ax.plot(self._xv[i, j], self._yv[i, j], "go", markersize=3)
-

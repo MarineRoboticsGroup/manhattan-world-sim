@@ -49,4 +49,3 @@ fg_bash_command = (
     f"bash {cwd}/flamegraph.bash {fg_script_path} {fg_log_path} {fg_image_path}"
 )
 subprocess.call(fg_bash_command.split(), stdout=subprocess.PIPE)
-

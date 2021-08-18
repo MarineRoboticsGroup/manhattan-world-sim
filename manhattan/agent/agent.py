@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import abstractmethod
-import matplotlib.pyplot as plt # type: ignore
+import matplotlib.pyplot as plt  # type: ignore
 import numpy as np
 
 from manhattan.noise_models.range_noise_model import RangeNoiseModel
@@ -18,9 +18,7 @@ class Agent:
     robot or a stationary beacon.
     """
 
-    def __init__(
-        self, name: str, range_model: RangeNoiseModel,
-    ) -> None:
+    def __init__(self, name: str, range_model: RangeNoiseModel) -> None:
         assert isinstance(name, str)
         assert isinstance(range_model, RangeNoiseModel)
 
@@ -97,7 +95,7 @@ class Robot(Agent):
         start_pose: SE2Pose,
         range_model: RangeNoiseModel,
         odometry_model: OdomNoiseModel,
-        loop_closure_model: LoopClosureModel
+        loop_closure_model: LoopClosureModel,
     ) -> None:
         assert isinstance(name, str)
         assert isinstance(start_pose, SE2Pose)
@@ -135,7 +133,7 @@ class Robot(Agent):
         """Returns the robot's current heading in radians"""
         return self.pose.theta
 
-    def get_loop_closure_measurement(self, other_pose:SE2Pose) -> LoopClosure:
+    def get_loop_closure_measurement(self, other_pose: SE2Pose) -> LoopClosure:
         """Gets a loop closure measurement to another pose based on the Robot's
         loop closure model
 
@@ -146,7 +144,9 @@ class Robot(Agent):
             LoopClosure: the loop closure measurement
         """
         assert isinstance(other_pose, SE2Pose)
-        return self._loop_closure_model.get_relative_pose_measurement(self.pose, other_pose, self.timestep)
+        return self._loop_closure_model.get_relative_pose_measurement(
+            self.pose, other_pose, self.timestep
+        )
 
     def move(self, transform: SE2Pose) -> OdomMeasurement:
         """Moves the robot by the given transform and returns a noisy odometry
@@ -191,7 +191,7 @@ class Robot(Agent):
 
 class Beacon(Agent):
     def __init__(
-        self, name: str, position: Point2, range_model: RangeNoiseModel,
+        self, name: str, position: Point2, range_model: RangeNoiseModel
     ) -> None:
         assert isinstance(name, str)
         assert isinstance(position, Point2)
