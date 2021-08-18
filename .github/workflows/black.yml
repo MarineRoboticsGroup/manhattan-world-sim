@@ -1,15 +1,18 @@
 # this is a workflow to check the formatting of the code to make sure that the
 # commits adhere to the black styling. Code was pulled from following source:
-# https://github.com/rickstaa/action-black/
+# https://black.readthedocs.io/en/stable/integrations/github_actions.html
 
-name: black-action
-on: [push]
+name: Lint-Black
+
+on: [push, pull_request]
+
 jobs:
-  linter_name:
-    name: runner / black formatter
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: rickstaa/action-black@v1
+      - uses: psf/black@stable
         with:
-          black_args: ". --check"
+          options: "--check --verbose"
+          src: "./manhattan"
+          version: "21.5b1"
