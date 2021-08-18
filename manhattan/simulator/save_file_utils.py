@@ -16,7 +16,7 @@ def save_to_chad_format(
     range_measurements: List[RangeMeasurement],
     range_associations: List[Tuple[str, str]],
     gt_range_associations: List[Tuple[str, str]],
-):
+) -> None:
     """
     Save the given data to the file format used by CHAD.
     """
@@ -125,6 +125,10 @@ def save_to_chad_format(
                 beacon_str = "Beacon "
                 beacon_idx = int(association_var[len(beacon_str) :])
                 return f"L{beacon_idx}"
+
+            raise ValueError(
+                f"association_var: {association_var},timestamp: {timestamp}"
+            )
 
         timestamp = range_measure.timestamp
 

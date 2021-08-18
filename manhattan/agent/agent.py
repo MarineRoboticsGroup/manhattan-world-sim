@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import abstractmethod
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt # type: ignore
 import numpy as np
 
 from manhattan.noise_models.range_noise_model import RangeNoiseModel
@@ -20,7 +20,7 @@ class Agent:
 
     def __init__(
         self, name: str, range_model: RangeNoiseModel,
-    ):
+    ) -> None:
         assert isinstance(name, str)
         assert isinstance(range_model, RangeNoiseModel)
 
@@ -29,9 +29,9 @@ class Agent:
         self._timestep = 0
 
     def get_range_measurement_to_agent(self, other_agent: Agent) -> RangeMeasurement:
-        other_loc = other_agent.get_position()
+        other_loc = other_agent.position
         assert isinstance(other_loc, Point2)
-        cur_loc = self.get_position()
+        cur_loc = self.position
         assert isinstance(cur_loc, Point2)
         dist = cur_loc.distance(other_loc)
         measurement = self._range_model.get_range_measurement(dist, self.timestep)
@@ -98,7 +98,7 @@ class Robot(Agent):
         range_model: RangeNoiseModel,
         odometry_model: OdomNoiseModel,
         loop_closure_model: LoopClosureModel
-    ):
+    ) -> None:
         assert isinstance(name, str)
         assert isinstance(start_pose, SE2Pose)
         assert isinstance(range_model, RangeNoiseModel)
@@ -166,7 +166,6 @@ class Robot(Agent):
 
         # get the odometry measurement
         odom_measurement = self._odom_model.get_odometry_measurement(transform)
-        assert isinstance(odom_measurement, OdomMeasurement)
         return odom_measurement
 
     def plot(self) -> None:
@@ -193,7 +192,7 @@ class Robot(Agent):
 class Beacon(Agent):
     def __init__(
         self, name: str, position: Point2, range_model: RangeNoiseModel,
-    ):
+    ) -> None:
         assert isinstance(name, str)
         assert isinstance(position, Point2)
         assert isinstance(range_model, RangeNoiseModel)

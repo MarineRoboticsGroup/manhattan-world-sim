@@ -1,17 +1,18 @@
+from __future__ import annotations
 import numpy as np
 import math
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Optional, overload
 
 _RAD_TO_DEG_FACTOR = 180.0 / np.pi
 _DEG_TO_RAD_FACTOR = np.pi / 180.0
 _TWO_PI = 2 * np.pi
 
 
-def none_to_zero(x) -> "x":
+def none_to_zero(x: Optional[float]) -> float:
     return 0.0 if x is None else x
 
 
-def theta_to_pipi(theta):
+def theta_to_pipi(theta: float):
     return (theta + np.pi) % _TWO_PI - np.pi
 
 
@@ -37,9 +38,8 @@ class Point2(object):
 
     @classmethod
     def by_array(
-        cls, other: Union[List[float], Tuple[float], np.ndarray], frame: str
+        cls, other: Union[List[float], Tuple[float, float], np.ndarray], frame: str
     ) -> "Point2":
-        assert isinstance(other, (list, tuple, np.ndarray))
         return cls(other[0], other[1], frame)
 
     @staticmethod
@@ -53,9 +53,19 @@ class Point2(object):
     def x(self) -> float:
         return self._x
 
+    @x.setter
+    def x(self, x: float) -> None:
+        assert isinstance(x, float)
+        self._x = x
+
     @property
     def y(self) -> float:
         return self._y
+
+    @y.setter
+    def y(self, y: float) -> None:
+        assert isinstance(y, float)
+        self._y = y
 
     @property
     def frame(self) -> str:
@@ -72,19 +82,7 @@ class Point2(object):
     def inverse(self) -> "Point2":
         return Point2(-self.x, -self.y, self.frame)
 
-    @x.setter
-    def x(self, x: float) -> None:
-        assert isinstance(x, float)
-        self._x = x
-
-    @y.setter
-    def y(self, y: float) -> None:
-        assert isinstance(y, float)
-        self._y = y
-
-    def set_x_y(self, x: float, y: float):
-        assert np.issubdtype(x, np.floating)
-        assert np.issubdtype(y, np.floating)
+    def set_x_y(self, x: float, y: float) -> None:
         self._x = x
         self._y = y
 
@@ -176,15 +174,14 @@ class Point2(object):
         Returns:
             Point2: The scalar multiple of this point
         """
-        assert np.isscalar(other)
-        return Point2(self.x * other, self.y * other)
+        return Point2(self.x * other, self.y * other, self.frame)
 
     def __truediv__(self, other: Union[int, float]) -> "Point2":
         assert np.isscalar(other)
         if other == 0.0:
             raise ValueError("Cannot divide by zeros.")
         else:
-            return Point2(self.x / other, self.y / other)
+            return Point2(self.x / other, self.y / other, self.frame)
 
     def __iadd__(self, other: "Point2") -> "Point2":
         assert isinstance(other, Point2)
@@ -200,7 +197,7 @@ class Point2(object):
         self._y -= other.y
         return self
 
-    def __imul__(self, other: np.floating) -> "Point2":
+    def __imul__(self, other: float) -> "Point2":
         assert np.isscalar(other)
         self._x *= other
         self._y *= other
@@ -226,15 +223,15 @@ class Point2(object):
         string += "}"
         return string
 
-    def __eq__(self, other: "Point2") -> bool:
-        assert isinstance(other, Point2)
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Point2):
+            return False
         if isinstance(other, Point2):
             return (
                 abs(self.x - other.x) < 1e-8
                 and abs(self.y - other.y) < 1e-8
                 and self.frame == other.frame
             )
-        return False
 
     def __hash__(self) -> int:
         return hash((self.x, self.y, self.frame))
@@ -339,10 +336,10 @@ class Rot2(object):
         return cls(vector[0], local_frame, base_frame)
 
     @staticmethod
-    def dist(x1: np.ndarray, x2: np.ndarray):
+    def dist(x1: Rot2, x2: Rot2):
         """chordal distance between x1 and x2 which are np.ndarray forms of Rot2"""
         return np.linalg.norm(
-            (Rot2.by_array(x1).inverse() * Rot2.by_array(x2)).log_map()
+            (x1.inverse() * x2).log_map()
         )
 
     def log_map(self):
@@ -460,7 +457,15 @@ class Rot2(object):
 
         return self.inverse() * base_frame_pt
 
-    def __mul__(self, other: Union["Rot2", "Point2"]) -> Union["Rot2", "Point2"]:
+    @overload
+    def __mul__(self, other: Rot2) -> Rot2:
+        pass
+
+    @overload
+    def __mul__(self, other: Point2) -> Point2:
+        pass
+
+    def __mul__(self, other: Union[Rot2, Point2]) -> Union[Rot2, Point2]:
         """Rotates a point or rotation by this rotation
 
         Args:
@@ -472,7 +477,6 @@ class Rot2(object):
         Returns:
             (Rot2, Point2): the rotated object
         """
-        assert isinstance(other, (Rot2, Point2))
         if isinstance(other, Rot2):
             assert self.local_frame == other.base_frame
             return Rot2(self.theta + other.theta, self.local_frame, other.base_frame)
@@ -484,11 +488,25 @@ class Rot2(object):
 
         raise ValueError("Not a Point2 or Rot2 type to multiply.")
 
-    def __imul__(self, other: "Rot2") -> "Rot2":
+    @overload
+    def __imul__(self, other: Rot2) -> Rot2:
+        pass
+
+    @overload
+    def __imul__(self, other: Point2) -> Point2:
+        pass
+
+    def __imul__(self, other: Union[Rot2, Point2]) -> Union[Rot2, Point2]: # type: ignore
         if isinstance(other, Rot2):
+            assert self.local_frame == other.base_frame
             self._theta += other.theta
             self._local_frame = other.local_frame
             return self
+        elif isinstance(other, Point2):
+            assert self.local_frame == other.frame
+            x = self.cos * other.x - self.sin * other.y
+            y = self.sin * other.x + self.cos * other.y
+            return Point2(x, y, frame=self.base_frame)
 
         raise ValueError("Not a Rot2 type to multiply.")
 
@@ -500,7 +518,10 @@ class Rot2(object):
         string += "}"
         return string
 
-    def __eq__(self, other: "Rot2") -> bool:
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Rot2):
+            return False
+
         if isinstance(other, Rot2):
             same_frames = (
                 self.local_frame == other.local_frame
@@ -508,10 +529,9 @@ class Rot2(object):
             )
             angle_similar = abs(self.theta - other.theta) < 1e-8
             return same_frames and angle_similar
-        return False
 
     def __hash__(self) -> int:
-        return hash(str(self.theta), (self.base_frame), (self.local_frame))
+        return hash(str(self.theta), (self.base_frame), (self.local_frame)) # type: ignore
 
 
 class SE2Pose(object):
@@ -578,13 +598,13 @@ class SE2Pose(object):
         assert isinstance(base_frame, str)
         assert not local_frame == base_frame
 
-        pt = Point2.by_array(matrix[0:2, 2])
-        rt = Rot2.by_matrix(matrix[0:2, 0:2])
+        pt = Point2.by_array(matrix[0:2, 2], local_frame)
+        rt = Rot2.by_matrix(matrix[0:2, 0:2], local_frame, base_frame)
         return SE2Pose.by_pt_rt(pt, rt, local_frame, base_frame)
 
     @classmethod
     def by_exp_map(
-        cls, vector: np.array, local_frame: str, base_frame: str
+        cls, vector: np.ndarray, local_frame: str, base_frame: str
     ) -> "SE2Pose":
         """Constructs a pose from a exponential map vector
 
@@ -649,7 +669,7 @@ class SE2Pose(object):
         assert isinstance(base_frame, str)
         assert not local_frame == base_frame
 
-        return cls(other[0], other[1], other[2])
+        return cls(other[0], other[1], other[2], local_frame, base_frame)
 
     @staticmethod
     def dist(x1: np.ndarray, x2: np.ndarray):
@@ -894,7 +914,7 @@ class SE2Pose(object):
         string += "}"
         return string
 
-    def __eq__(self, other: "SE2Pose") -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, SE2Pose):
             return (
                 abs(self._rot.theta - other.theta) < 1e-8

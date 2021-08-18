@@ -1,5 +1,6 @@
 from manhattan.geometry.TwoDimension import SE2Pose
 import numpy as np
+from numpy import ndarray
 
 
 class OdomMeasurement:
@@ -13,7 +14,7 @@ class OdomMeasurement:
         measured_odometry: SE2Pose,
         mean_offset: np.ndarray,
         covariance: np.ndarray
-    ):
+    ) -> None:
         """Construct an odometry measurement
 
         Args:

@@ -3,6 +3,7 @@ import numpy as np
 
 from manhattan.measurement.odom_measurement import OdomMeasurement
 from manhattan.geometry.TwoDimension import SE2Pose
+from numpy import ndarray
 
 
 class OdomNoiseModel:
@@ -45,7 +46,7 @@ class GaussianOdomNoiseModel(OdomNoiseModel):
 
     def __init__(
         self, mean: np.ndarray = np.zeros(3), covariance: np.ndarray = np.eye(3) / 1e8,
-    ):
+    ) -> None:
         """Initializes the gaussian additive noise model
 
         Args:

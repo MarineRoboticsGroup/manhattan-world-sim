@@ -3,6 +3,7 @@ import numpy as np
 
 from manhattan.measurement.loop_closure import LoopClosure
 from manhattan.geometry.TwoDimension import SE2Pose
+from numpy import ndarray
 
 
 class LoopClosureModel:
@@ -54,7 +55,7 @@ class GaussianLoopClosureModel(LoopClosureModel):
 
     def __init__(
         self, mean: np.ndarray = np.zeros(3), covariance: np.ndarray = np.eye(3) / 50.0,
-    ):
+    ) -> None:
         """Initializes the gaussian additive noise model
 
         Args:

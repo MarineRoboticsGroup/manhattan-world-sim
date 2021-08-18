@@ -1,6 +1,7 @@
 import numpy as np
 
 from manhattan.geometry.TwoDimension import SE2Pose
+from numpy import ndarray
 
 
 class LoopClosure:
@@ -16,7 +17,7 @@ class LoopClosure:
         timestamp: int,
         mean_offset: np.ndarray,
         covariance: np.ndarray,
-    ):
+    ) -> None:
         assert isinstance(pose_1, SE2Pose)
         assert isinstance(pose_2, SE2Pose)
         assert isinstance(measured_relative_pose, SE2Pose)

@@ -1,7 +1,22 @@
 import numpy as np
-from typing import Iterable
+from typing import Sequence, Sized, overload, Tuple, List
+from manhattan.geometry.TwoDimension import Point2, SE2Pose
 
-def choice(a: Iterable[object]) -> object:
+@overload
+def choice(a: List[Tuple[Point2, float]]) -> Tuple[Point2, float]:
+    pass
+
+@overload
+def choice(a: List[SE2Pose]) -> SE2Pose:
+    pass
+
+@overload
+def choice(a: List[str]) -> str:
+    pass
+
+def choice(a: Sequence[object]) -> object:
     choices = [x for x in range(len(a))]
     choice_idx = np.random.choice(choices)
-    return a[choice_idx]
+    sample = a[choice_idx]
+    assert len(sample) == 2
+    return sample

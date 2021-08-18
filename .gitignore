@@ -4,6 +4,12 @@ bin-release/
 [Oo]bj/
 [Bb]in/
 
+# mypy
+*.sqlite3
+
+# profiling
+*.log
+*.svg
 
 # Jupyter Notebooks #
 #####################

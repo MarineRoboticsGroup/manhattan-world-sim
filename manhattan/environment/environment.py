@@ -2,8 +2,8 @@ from copy import deepcopy
 
 import itertools
 import numpy as np
-from typing import Tuple, List, Union
-import matplotlib.pyplot as plt
+from typing import Tuple, List, Union, Optional
+import matplotlib.pyplot as plt  # type: ignore
 
 from manhattan.geometry.TwoDimension import SE2Pose, Point2
 from manhattan.agent.agent import Robot
@@ -48,7 +48,7 @@ class ManhattanWorld:
         row_corner_number: int = 1,
         column_corner_number: int = 1,
         cell_scale: float = 1.0,
-        robot_area: List[Tuple] = None,
+        robot_area: Optional[List[Tuple[int, int]]] = None,
         check_collision: bool = True,
         tol: float = 1e-5,
     ):
@@ -100,10 +100,6 @@ class ManhattanWorld:
         self._x_coords = np.arange(self._num_x_pts) * self._scale
         self._y_coords = np.arange(self._num_y_pts) * self._scale
         self._xv, self._yv = np.meshgrid(self._x_coords, self._y_coords, indexing="ij")
-
-        # agents are added by vertices but stored with groundtruth poses or points
-        self._robot_poses = {}
-        self._beacon_points = {}
 
         if robot_area is not None:
             # ensure a rectangular feasible area for robot
@@ -160,8 +156,6 @@ class ManhattanWorld:
         line += (
             "Beacon feasible vertices: " + self._beacon_feasibility.__repr__() + "\n"
         )
-        line += "Robots: " + self._robot_poses.__repr__() + "\n"
-        line += "Beacons: " + self._beacon_points.__repr__() + "\n"
         return line
 
     @property
@@ -220,7 +214,7 @@ class ManhattanWorld:
             < self._tol
         )
 
-    def get_neighboring_vertices(self, vert: Tuple[int, int]) -> List[tuple]:
+    def get_neighboring_vertices(self, vert: Tuple[int, int]) -> List[Tuple[int, int]]:
         """gets all neighboring vertices to the vertex at index (i, j). Only
         returns valid indices (not out of bounds)
 
@@ -274,7 +268,7 @@ class ManhattanWorld:
 
     def get_neighboring_robot_vertices_not_behind_robot(
         self, robot: Robot,
-    ) -> List[Tuple[int, int]]:
+    ) -> List[Tuple[Point2, float]]:
         """get all neighboring vertices to the vertex the robot is at which are
         not behind the given robot
 
@@ -282,7 +276,7 @@ class ManhattanWorld:
             robot (Robot): the robot
 
         Returns:
-            List[Tuple[int, int]]: the list of neighboring vertices that are
+            List[Tuple[Point2, float]]: the list of neighboring vertices that are
                 not behind the robot
         """
         assert isinstance(robot, Robot)
@@ -356,14 +350,15 @@ class ManhattanWorld:
             base_frame="world",
         )
 
-    def get_random_beacon_point(self, frame: str) -> Point2:
+    def get_random_beacon_point(self, frame: str) -> Optional[Point2]:
         """Returns a random beacon point on the grid.
 
         Args:
             frame (str): the frame of the beacon
 
         Returns:
-            Point2: a random valid beacon point, None if no position is feasible
+            Optional[Point2]: a random valid beacon point, None if no position
+                is feasible
         """
         assert isinstance(frame, str)
 
@@ -387,6 +382,7 @@ class ManhattanWorld:
 
         # randomly sample one of the vertices
         vert_sample = choice(feasible_verts)
+        assert len(vert_sample) == 2
 
         i, j = vert_sample
         position = Point2(self._xv[i, j], self._yv[i, j], frame=frame)
@@ -602,14 +598,12 @@ class ManhattanWorld:
         assert 0 <= vert[1] < self._num_y_pts
         return True
 
-    def check_vertex_list_valid(self, vertices: List[tuple]):
+    def check_vertex_list_valid(self, vertices: List[Tuple[int, int]]):
         """Checks that the indices of the vertex list are within the bounds of the grid
 
         Args:
             vertices (List[tuple]): list of vertices
         """
-        assert isinstance(vertices, list)
-        assert all(isinstance(v, tuple) for v in vertices)
         assert all(self.check_vertex_valid(v) for v in vertices)
         return True
 

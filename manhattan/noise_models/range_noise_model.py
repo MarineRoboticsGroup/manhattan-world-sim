@@ -13,8 +13,9 @@ class RangeNoiseModel:
     measurement = f(true_distance, sensor_params)
     """
 
-    def __init__(self, measurement_model: Callable[[float], float]):
-        assert isinstance(measurement_model, FunctionType)
+    def __init__(
+        self, measurement_model: Callable[[float, int], RangeMeasurement]
+    ) -> None:
         self._measurement_model = measurement_model
 
     def __str__(self):
@@ -58,7 +59,7 @@ class ConstantGaussianRangeNoiseModel(RangeNoiseModel):
 
     """
 
-    def __init__(self, mean: float = 0.0, stddev: float = 0.1):
+    def __init__(self, mean: float = 0.0, stddev: float = 0.1) -> None:
         assert isinstance(mean, float)
         assert isinstance(stddev, float)
         assert stddev > 0
@@ -67,13 +68,23 @@ class ConstantGaussianRangeNoiseModel(RangeNoiseModel):
         self._stddev = stddev
 
         # define the measurement model
-        measurement_model = lambda true_dist, timestamp: RangeMeasurement(
-            true_dist,
-            np.random.normal(true_dist + mean, stddev),
-            mean,
-            stddev,
-            timestamp,
-        )
+        # measurement_model = lambda true_dist, timestamp: RangeMeasurement(
+        #     true_dist,
+        #     np.random.normal(true_dist + mean, stddev),
+        #     mean,
+        #     stddev,
+        #     timestamp,
+        # )
+
+        def measurement_model(true_dist: float, timestamp: int) -> RangeMeasurement:
+            return RangeMeasurement(
+                true_dist,
+                true_dist + np.random.normal(mean, stddev),
+                mean,
+                stddev,
+                timestamp,
+            )
+
         super().__init__(measurement_model)
 
     def __str__(self):
