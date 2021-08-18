@@ -145,7 +145,9 @@ class ManhattanSimulator:
         # check meta-parameters (e.g. debugging mode)
         assert isinstance(sim_params.debug_mode, bool)
 
-    def check_simulation_state(self,) -> None:
+    def check_simulation_state(
+        self,
+    ) -> None:
         """Does some simple checking to make sure everything is in order in the
         simulation
         """
@@ -273,7 +275,7 @@ class ManhattanSimulator:
     ###### Simulation interface methods ######
 
     def save_simulation_data(self, data_dir: str, format: str = "chad") -> None:
-        """ Saves the simulation data to a file with a given format.
+        """Saves the simulation data to a file with a given format.
 
         Args:
             data_dir (str): where to save the data to
@@ -414,7 +416,9 @@ class ManhattanSimulator:
 
     ###### Internal methods to move robots ######
 
-    def _move_robots_randomly(self,) -> None:
+    def _move_robots_randomly(
+        self,
+    ) -> None:
         """Randomly moves all the robots to a neighboring vertex and records the
         resulting odometry measurement
 
@@ -616,7 +620,7 @@ class ManhattanSimulator:
     def _get_incorrect_robot_to_beacon_range_association(
         self, robot_idx: int, beacon_idx: int
     ) -> Tuple[str, str]:
-        """ returns an incorrect data association for the range measurement
+        """returns an incorrect data association for the range measurement
         (either to an incorrect robot or to a beacon)
 
         Args:
@@ -688,8 +692,10 @@ class ManhattanSimulator:
 
         # randomly sample to decide if this is an incorrect association
         if np.random.rand() < self.sim_params.false_range_data_association_prob:
-            measurement_association = self._get_incorrect_robot_to_robot_range_association(
-                robot_1_idx, robot_2_idx
+            measurement_association = (
+                self._get_incorrect_robot_to_robot_range_association(
+                    robot_1_idx, robot_2_idx
+                )
             )
         else:
             measurement_association = true_association
@@ -705,7 +711,7 @@ class ManhattanSimulator:
     def _add_robot_to_beacon_range_measurement(
         self, robot_idx: int, beacon_idx: int, measurement: RangeMeasurement
     ) -> None:
-        """ Add a new range measurement between a robot and a beacon. Randomly
+        """Add a new range measurement between a robot and a beacon. Randomly
         chooses if the data association is incorrect. If incorrect, the
         association can be to robots or beacons
 
@@ -731,8 +737,10 @@ class ManhattanSimulator:
 
         # randomly sample to see if this is a false data association range measurement
         if np.random.rand() < self.sim_params.false_range_data_association_prob:
-            measurement_association = self._get_incorrect_robot_to_beacon_range_association(
-                robot_idx, beacon_idx
+            measurement_association = (
+                self._get_incorrect_robot_to_beacon_range_association(
+                    robot_idx, beacon_idx
+                )
             )
         else:
             measurement_association = true_association
@@ -767,8 +775,7 @@ class ManhattanSimulator:
         self._env.plot_environment(self.ax)
 
     def plot_beacons(self):
-        """Plots all of the beacons
-        """
+        """Plots all of the beacons"""
         assert len(self._beacon_plot_objects) == 0, (
             "Should not be plotting over existing beacons."
             + " This function should only be called once."
@@ -779,8 +786,7 @@ class ManhattanSimulator:
             self._beacon_plot_objects.append(beacon_plot_obj[0])
 
     def plot_robot_states(self):
-        """Plots the current robot states
-        """
+        """Plots the current robot states"""
 
         # delete all of the already shown robot poses from the plot
         # this allows us to more efficiently update the animation
@@ -795,7 +801,7 @@ class ManhattanSimulator:
             self._robot_plot_objects.append(rob_plot_obj[0])
 
     def show_plot(self, animation: bool = False):
-        """ shows everything that's been plotted
+        """shows everything that's been plotted
 
         Args:
             animation (bool): if True, just gives a minor pause. If False,

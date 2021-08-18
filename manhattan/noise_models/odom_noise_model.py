@@ -11,7 +11,9 @@ class OdomNoiseModel:
     A base odometry noise model.
     """
 
-    def __init__(self,):
+    def __init__(
+        self,
+    ):
         """
         Initialize this noise model.
         """
