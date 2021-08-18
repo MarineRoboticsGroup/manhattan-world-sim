@@ -38,4 +38,4 @@ for _ in range(num_timesteps):
 
 data_dir = "/home/alan/"
 data_dir = expanduser(join("~", "data", "example_factor_graphs"))
-sim.save_simulation_data(data_dir, format="chad")
+sim.save_simulation_data(data_dir, format="efg")

@@ -8,7 +8,7 @@ from manhattan.measurement.range_measurement import RangeMeasurement
 from manhattan.measurement.odom_measurement import OdomMeasurement
 
 
-def save_to_chad_format(
+def save_to_efg_format(
     data_file: str,
     odom_measurements: List[List[OdomMeasurement]],
     gt_poses: List[List[SE2Pose]],
@@ -18,7 +18,7 @@ def save_to_chad_format(
     gt_range_associations: List[Tuple[str, str]],
 ) -> None:
     """
-    Save the given data to the file format used by CHAD.
+    Save the given data to the extended factor graph format.
     """
 
     def get_pose_string(pose: SE2Pose) -> str:
@@ -117,7 +117,7 @@ def save_to_chad_format(
                 )
                 assert (
                     False
-                ), "This shouldn't be triggered right now as Chad doesn't want to consider multiple robots"
+                ), "This shouldn't be triggered right now as we haven't to considered multiple robots"
                 rob_str = "Robot "
                 robot_idx = int(association_var[len(rob_str) :])
                 return f"X{timestamp}"

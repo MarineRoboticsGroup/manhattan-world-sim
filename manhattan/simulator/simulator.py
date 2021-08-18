@@ -24,7 +24,7 @@ from manhattan.noise_models.loop_closure_model import (
     LoopClosureModel,
     GaussianLoopClosureModel,
 )
-from manhattan.simulator.save_file_utils import save_to_chad_format
+from manhattan.simulator.save_file_utils import save_to_efg_format
 from manhattan.utils.sample_utils import choice
 
 
@@ -274,18 +274,18 @@ class ManhattanSimulator:
 
     ###### Simulation interface methods ######
 
-    def save_simulation_data(self, data_dir: str, format: str = "chad") -> None:
+    def save_simulation_data(self, data_dir: str, format: str = "efg") -> None:
         """Saves the simulation data to a file with a given format.
 
         Args:
             data_dir (str): where to save the data to
-            format (str, optional): the format of the data. Defaults to "chad".
+            format (str, optional): the format of the data. Defaults to "efg".
         """
         if not isdir(data_dir):
             makedirs(data_dir)
 
-        if format == "chad":
-            self._save_data_as_chad_format(data_dir)
+        if format == "efg":
+            self._save_data_as_efg_format(data_dir)
         else:
             raise NotImplementedError
 
@@ -395,15 +395,15 @@ class ManhattanSimulator:
 
     ##### Internal methods to save data #####
 
-    def _save_data_as_chad_format(self, data_dir: str) -> None:
-        """Saves the data in a super special format as requested by Chad
+    def _save_data_as_efg_format(self, data_dir: str) -> None:
+        """Saves the data in the Extended Factor Graph (EFG) format.
 
         Args:
             data_dir (str): the directory to save everything in
         """
         save_file = f"{data_dir}/{self.file_name}.fg"
 
-        save_to_chad_format(
+        save_to_efg_format(
             save_file,
             self._odom_measurements,
             self._groundtruth_poses,
