@@ -17,6 +17,7 @@ def _get_robot_char_from_number(robot_number: int) -> str:
     """
     char = chr(ord("A") + robot_number)
     assert char != "L", "Character L is reserved for landmarks"
+    return "X"
     return char
 
 
@@ -134,7 +135,10 @@ def save_to_efg_format(
         pose_key = get_pose_key_from_frame_name(pinned_pose.local_frame)
         line = f"Factor UnarySE2ApproximateGaussianPriorFactor {pose_key} "
         line += f"{pinned_pose.x:.15f} {pinned_pose.y:.15f} {pinned_pose.theta:.15f} "
-        line += "covariance 0.0001 0.0 0.0 0.0 0.0001 0.0 0.0 0.0 0.00001\n"
+        x_stddev = 1
+        y_stddev = 1
+        theta_stddev = 1 / 20
+        line += f"covariance {x_stddev**2} 0.0 0.0 0.0 {y_stddev**2} 0.0 0.0 0.0 {theta_stddev**2}\n"
         return line
 
     def get_odom_factor_string(odom_measurement: OdomMeasurement) -> str:
