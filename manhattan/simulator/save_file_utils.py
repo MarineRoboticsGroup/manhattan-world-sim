@@ -15,7 +15,9 @@ def _get_robot_char_from_number(robot_number: int) -> str:
     """
     Get the robot character from the given robot number.
     """
-    return chr(ord("A") + robot_number)
+    char = chr(ord("A") + robot_number)
+    assert char != "L", "Character L is reserved for landmarks"
+    return char
 
 
 def get_robot_char_from_frame_name(frame: str) -> str:
