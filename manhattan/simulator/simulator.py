@@ -325,14 +325,10 @@ class ManhattanSimulator:
         raise NotImplementedError
 
     def add_robots(self, num_robots: int) -> None:
-        assert isinstance(num_robots, int)
-        assert num_robots > 0
         for _ in range(num_robots):
             self.add_robot()
 
     def add_beacons(self, num_beacons: int) -> None:
-        assert isinstance(num_beacons, int)
-        assert num_beacons > 0
         for _ in range(num_beacons):
             self.add_beacon()
 
@@ -608,7 +604,7 @@ class ManhattanSimulator:
                     cand_x = cand_pose.x
                     cand_y = cand_pose.y
                     diff_x = abs(cur_x - cand_x)
-                    diff_y = cur_y - cand_y
+                    diff_y = abs(cur_y - cand_y)
                     x_too_far = diff_x > self.sim_params.loop_closure_radius
                     y_too_far = diff_y > self.sim_params.loop_closure_radius
 
