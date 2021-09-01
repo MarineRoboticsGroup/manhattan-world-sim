@@ -1,16 +1,53 @@
 # from .nf_isam.example.slam.manhattan_waterworld.factor_graph_generator import
 # *
 from typing import List, Tuple
+import re
+import numpy as np
 
 from manhattan.agent.agent import Robot, Beacon
 from manhattan.geometry.TwoDimension import SE2Pose, Point2
 from manhattan.measurement.range_measurement import RangeMeasurement
 from manhattan.measurement.odom_measurement import OdomMeasurement
+from manhattan.measurement.loop_closure import LoopClosure
+
+
+def _get_robot_char_from_number(robot_number: int) -> str:
+    """
+    Get the robot character from the given robot number.
+    """
+    return chr(ord("A") + robot_number)
+
+
+def get_robot_char_from_frame_name(frame: str) -> str:
+    """
+    Get the robot character from the given frame.
+    """
+    assert "Robot " in frame
+    robot_name = re.search(r"Robot [\d+]*", frame).group(0)  # type: ignore
+    robot_number = int(robot_name[len("Robot ") :])
+    return _get_robot_char_from_number(robot_number)
+
+
+def get_pose_key_from_frame_name(frame: str) -> str:
+    """
+    Get the pose key from the given frame.
+    """
+    assert "Robot " in frame
+
+    # get the char corresponding to the robot (e.g. A for robot 0, B for
+    # robot 1, etc.)
+    key_char = get_robot_char_from_frame_name(frame)
+
+    # get the timestamp for the pose
+    time_str = re.search(r"time: [\d+]*", frame).group(0)  # type: ignore
+    pose_idx = int(time_str[len("time: ") :])
+    return f"{key_char}{pose_idx}"
 
 
 def save_to_efg_format(
     data_file: str,
     odom_measurements: List[List[OdomMeasurement]],
+    loop_closures: List[LoopClosure],
     gt_poses: List[List[SE2Pose]],
     beacons: List[Beacon],
     range_measurements: List[RangeMeasurement],
@@ -21,20 +58,48 @@ def save_to_efg_format(
     Save the given data to the extended factor graph format.
     """
 
-    def get_pose_string(pose: SE2Pose) -> str:
+    def get_pose_measurement_string(pose: SE2Pose, cov: np.ndarray) -> str:
+        """This is a utility function to get a formatted string to write to EFG
+        formats for measurements which can be represented by poses (i.e.
+        odometry and loop closures.
+
+        Args:
+            pose (SE2Pose): the measurement
+
+        Returns:
+            str: the formatted string representation of the pose measurement
+        """
+        assert cov.shape == (3, 3)  # because only in SE2 (3 variables)
+
+        # add in odometry info
+        del_x = pose.x
+        del_y = pose.y
+        del_theta = pose.theta
+        line = f"{del_x} {del_y} {del_theta} "
+
+        # add in covariance info
+        line += "covariance "
+        covar_info = cov.flatten()
+        for val in covar_info:
+            line += f"{val:.15f} "
+
+        # return the formatted string
+        return line
+
+    def get_pose_var_string(pose: SE2Pose) -> str:
         """
         Takes a pose and returns a string in the desired format
         """
         line = "Variable Pose SE2 "
 
-        # get timestamp for pose
+        # get local frame for pose
         frame = pose.local_frame
-        search_str = "time: "
-        time_ind = frame.find(search_str)
-        time = int(frame[time_ind + len(search_str) :])
+
+        # get the key to associate with this pose
+        pose_key = get_pose_key_from_frame_name(frame)
 
         # add in pose information
-        line += f"X{time} {pose.x:.3f} {pose.y:.3f} {pose.theta:.3f}\n"
+        line += f"{pose_key} {pose.x:.15f} {pose.y:.15f} {pose.theta:.15f}\n"
 
         return line
 
@@ -54,24 +119,23 @@ def save_to_efg_format(
         beacon_str_ind = frame.find(search_str)
         beacon_ind = int(frame[beacon_str_ind + len(search_str) :])
         pos = beacon.position
-        line += f"L{beacon_ind} {pos.x:.3f} {pos.y:.3f}\n"
+        line += f"L{beacon_ind} {pos.x:.15f} {pos.y:.15f}\n"
         return line
 
-    def get_prior_to_pin() -> str:
+    def get_prior_to_pin_string(poses: List[List[SE2Pose]]) -> str:
         """this is the prior on the first pose to 'pin' the factor graph.
 
-        Raises:
-            NotImplementedError: [description]
-
         Returns:
-            str: [description]
+            str: the line representing the prior
         """
-        line = "Factor UnarySE2ApproximateGaussianPriorFactor "
-        line += "X0 0.0 0.0 0.0 "
-        line += "covariance 0.01 0.0 0.0 0.0 0.01 0.0 0.0 0.0 0.001\n"
+        pinned_pose = poses[0][0]
+        pose_key = get_pose_key_from_frame_name(pinned_pose.local_frame)
+        line = f"Factor UnarySE2ApproximateGaussianPriorFactor {pose_key} "
+        line += f"{pinned_pose.x:.15f} {pinned_pose.y:.15f} {pinned_pose.theta:.15f} "
+        line += "covariance 0.0001 0.0 0.0 0.0 0.0001 0.0 0.0 0.0 0.00001\n"
         return line
 
-    def get_odom_factor_string(odom_measurement: OdomMeasurement, odom_num: int) -> str:
+    def get_odom_factor_string(odom_measurement: OdomMeasurement) -> str:
         """
         Takes in an odometry measurement and returns a string in the desired
         format for a factor.
@@ -81,21 +145,50 @@ def save_to_efg_format(
         # 0.010000000000000002 0.0 0.0 0.0 0.0009
         # set up basic information
         line = "Factor SE2RelativeGaussianLikelihoodFactor "
-        line += f"X{odom_num} X{odom_num + 1} "
+        base_key = get_pose_key_from_frame_name(odom_measurement.base_frame)
+        to_key = get_pose_key_from_frame_name(odom_measurement.local_frame)
 
-        # add in odometry info
-        del_x = odom_measurement.measured_odom.x
-        del_y = odom_measurement.measured_odom.y
-        del_theta = odom_measurement.measured_odom.theta
-        line += f"{del_x} {del_y} {del_theta} "
+        line += f"{base_key} {to_key} "
 
-        # add in covariance info
-        line += "covariance "
-        covar_info = odom_measurement.covariance.flatten()
-        for val in covar_info:
-            line += f"{val:.3f} "
+        odom_info = get_pose_measurement_string(
+            odom_measurement.measured_odom, odom_measurement.covariance
+        )
+        line += odom_info
 
         # covar_info = covar_info.replace("[", "").replace("]", "")
+        line += "\n"
+        return line
+
+    def get_loop_closure_factor_string(loop_clos: LoopClosure) -> str:
+        """
+        Takes in a loop closure and returns a string in the desired format
+        for a factor.
+
+        Args:
+            loop_clos (LoopClosure): the loop closure
+
+        Returns:
+            str: the line representing the factor
+        """
+
+        # Factor SE2RelativeGaussianLikelihoodFactor B2 B3 0.9102598585313532
+        # 0.06585288343000831 -0.0015874335137571194 covariance
+        # 0.010000000000000 0.000000000000000 0.000000000000000
+        # 0.000000000000000 0.010000000000000 0.000000000000000
+        # 0.000000000000000 0.000000000000000 0.000100000000000
+        line = "Factor SE2RelativeGaussianLikelihoodFactor "
+
+        # add in which poses are being related
+        base_pose_key = get_pose_key_from_frame_name(loop_clos.base_frame)
+        to_pose_key = get_pose_key_from_frame_name(loop_clos.local_frame)
+        line += f"{base_pose_key} {to_pose_key} "
+
+        # add in the measurement
+        loop_clos_data = get_pose_measurement_string(
+            loop_clos.measurement, loop_clos.covariance
+        )
+        line += loop_clos_data
+
         line += "\n"
         return line
 
@@ -111,16 +204,8 @@ def save_to_efg_format(
             assert 0 <= timestamp
 
             if "Robot" in association_var:
-                print(
-                    "We currently aren't formatting data to account for multiple robots!",
-                    "There should only be one robot in the simulator!!",
-                )
-                assert (
-                    False
-                ), "This shouldn't be triggered right now as we haven't to considered multiple robots"
-                rob_str = "Robot "
-                robot_idx = int(association_var[len(rob_str) :])
-                return f"X{timestamp}"
+                robot_char = get_robot_char_from_frame_name(association_var)
+                return f"{robot_char}{timestamp}"
             elif "Beacon" in association_var:
                 beacon_str = "Beacon "
                 beacon_idx = int(association_var[len(beacon_str) :])
@@ -135,12 +220,13 @@ def save_to_efg_format(
         assert association[0] != association[1]
         assert true_association[0] != true_association[1]
 
-        robot_id = association[0]
-        assert robot_id == true_association[0]
-        assert robot_id == "Robot 0"
+        robot_str = association[0]
+        assert robot_str == true_association[0]
 
-        robot_id = f"X{timestamp}"
+        # get the key of the pose (e.g. A1) for Robot 0, timestep 1
+        robot_id = get_association_variable_str(robot_str, timestamp)
 
+        # get the key of the pose (e.g. A1) for Robot 0, timestep 1
         measure_id = association[1]
         measure_id = get_association_variable_str(measure_id, timestamp)
         true_measure_id = true_association[1]
@@ -151,7 +237,7 @@ def save_to_efg_format(
             line = "Factor SE2R2RangeGaussianLikelihoodFactor "
             line += f"{robot_id} {true_measure_id} "
             line += (
-                f"{range_measure.measured_distance:.3f} {range_measure.stddev:.3f}\n"
+                f"{range_measure.measured_distance:.15f} {range_measure.stddev:.15f}\n"
             )
         else:
             # Factor AmbiguousDataAssociationFactor Observer X1 Observed L1 L2
@@ -161,7 +247,7 @@ def save_to_efg_format(
             line += f"Observer {robot_id} "
             line += f"Observed {true_measure_id} {measure_id} "
             line += "Weights 0.5 0.5 Binary SE2R2RangeGaussianLikelihoodFactor "
-            line += f"Observation {range_measure.measured_distance:.3f} Sigma {range_measure.stddev:.3f}\n"
+            line += f"Observation {range_measure.measured_distance:.15f} Sigma {range_measure.stddev:.15f}\n"
 
         return line
 
@@ -169,20 +255,24 @@ def save_to_efg_format(
 
     for pose_chain in gt_poses:
         for pose in pose_chain:
-            line = get_pose_string(pose)
+            line = get_pose_var_string(pose)
             file_writer.write(line)
 
     for beacon in beacons:
         line = get_beacon_var_string(beacon)
         file_writer.write(line)
 
-    line = get_prior_to_pin()
+    line = get_prior_to_pin_string(gt_poses)
     file_writer.write(line)
 
     for odom_measure_chain in odom_measurements:
-        for odom_num, odom_measure in enumerate(odom_measure_chain):
-            line = get_odom_factor_string(odom_measure, odom_num)
+        for odom_measure in odom_measure_chain:
+            line = get_odom_factor_string(odom_measure)
             file_writer.write(line)
+
+    for loop_closure in loop_closures:
+        line = get_loop_closure_factor_string(loop_closure)
+        file_writer.write(line)
 
     for range_idx in range(len(range_measurements)):
         line = get_range_factor_string(

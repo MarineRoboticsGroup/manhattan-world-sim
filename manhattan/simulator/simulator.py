@@ -33,9 +33,9 @@ class SimulationParams(NamedTuple):
     Args:
         grid_shape (Tuple[int, int]): (rows, cols) the shape of the manhattan
             world
-        row_corner_number (int): how many rows between each intersection
+        y_steps_to_intersection (int): how many rows between each intersection
             where the robot can turn
-        column_corner_number (int): how many columns between each
+        x_steps_to_intersection (int): how many columns between each
             intersection where the robot can turn
         cell_scale (float): the length of the sides of the cells in the
             manhattan world
@@ -51,13 +51,21 @@ class SimulationParams(NamedTuple):
             to try to detect loop closures
         false_loop_closure_prob (float): the probability that the data
             association is incorrect for a given loop closure
+        range_stddev (float): the standard deviation of the gaussian noise
+            added to the range measurements
+        odom_x_stddev (float): the standard deviation of the gaussian noise
+            added to the x position of the odometry
+        odom_y_stddev (float): the standard deviation of the gaussian noise
+            added to the y position of the odometry
+        odom_theta_stddev (float): the standard deviation of the gaussian
+            noise added to the theta position of the odometry
         debug_mode (bool): whether to print debug information and run debugging
             checks
     """
 
     grid_shape: Tuple = (10, 10)
-    row_corner_number: int = 1
-    column_corner_number: int = 1
+    y_steps_to_intersection: int = 1
+    x_steps_to_intersection: int = 1
     cell_scale: float = 1.0
     range_sensing_prob: float = 0.5
     range_sensing_radius: float = 5.0
@@ -66,7 +74,12 @@ class SimulationParams(NamedTuple):
     loop_closure_prob: float = 0.1
     loop_closure_radius: float = 2.0
     false_loop_closure_prob: float = 0.1
+    range_stddev: float = 0.1
+    odom_x_stddev: float = 0.1
+    odom_y_stddev: float = 0.1
+    odom_theta_stddev: float = 0.1
     debug_mode: bool = False
+    groundtruth_measurements: bool = False
 
 
 # TODO integrate the probabilities of measurements into the simulator
@@ -99,16 +112,16 @@ class ManhattanSimulator:
         assert all(0 < x for x in sim_params.grid_shape)
 
         # row and column spacing evenly fits into the grid shape
-        assert sim_params.grid_shape[0] % sim_params.row_corner_number == 0
-        assert sim_params.grid_shape[1] % sim_params.column_corner_number == 0
+        assert sim_params.grid_shape[0] % sim_params.y_steps_to_intersection == 0
+        assert sim_params.grid_shape[1] % sim_params.x_steps_to_intersection == 0
 
         # row_intersection_number is int > 0 and <= grid_shape[0]
-        assert isinstance(sim_params.row_corner_number, int)
-        assert 0 <= sim_params.row_corner_number <= sim_params.grid_shape[0]
+        assert isinstance(sim_params.y_steps_to_intersection, int)
+        assert 0 <= sim_params.y_steps_to_intersection <= sim_params.grid_shape[0]
 
         # column_intersection_number is int > 0 and <= grid_shape[1]
-        assert isinstance(sim_params.column_corner_number, int)
-        assert 0 <= sim_params.column_corner_number <= sim_params.grid_shape[1]
+        assert isinstance(sim_params.x_steps_to_intersection, int)
+        assert 0 <= sim_params.x_steps_to_intersection <= sim_params.grid_shape[1]
 
         # cell_scale is positive float
         assert isinstance(sim_params.cell_scale, float)
@@ -192,8 +205,8 @@ class ManhattanSimulator:
 
         self._env = ManhattanWorld(
             grid_vertices_shape=sim_params.grid_shape,
-            row_corner_number=sim_params.row_corner_number,
-            column_corner_number=sim_params.column_corner_number,
+            y_steps_to_intersection=sim_params.y_steps_to_intersection,
+            x_steps_to_intersection=sim_params.x_steps_to_intersection,
             cell_scale=sim_params.cell_scale,
         )
         self._sim_params = sim_params
@@ -212,6 +225,17 @@ class ManhattanSimulator:
         self._range_associations: List[Tuple[str, str]] = []
         self._groundtruth_range_associations: List[Tuple[str, str]] = []
         self._sensed_beacons: Set[Beacon] = set()
+
+        # measurement models
+        self._base_range_model = ConstGaussRangeSensor(
+            mean=0.0, stddev=self._sim_params.range_stddev
+        )
+        cov_x = self._sim_params.odom_x_stddev ** 2
+        cov_y = self._sim_params.odom_y_stddev ** 2
+        cov_theta = self._sim_params.odom_theta_stddev ** 2
+        self._base_odometry_model = GaussOdomSensor(
+            mean=np.zeros(3), covariance=np.diag([cov_x, cov_y, cov_theta])
+        )
 
         # make sure everything constructed correctly
         self.check_simulation_state()
@@ -234,8 +258,8 @@ class ManhattanSimulator:
         line = f"simEnvironment_"
         line += f"grid{self.sim_params.grid_shape[0]}x"
         line += f"{self.sim_params.grid_shape[1]}_"
-        line += f"rowCorner{self.sim_params.row_corner_number}_"
-        line += f"colCorner{self.sim_params.column_corner_number}_"
+        line += f"rowCorner{self.sim_params.y_steps_to_intersection}_"
+        line += f"colCorner{self.sim_params.x_steps_to_intersection}_"
         line += f"cellScale{self.sim_params.cell_scale}_"
         line += f"rangeProb{self.sim_params.range_sensing_prob}_"
         line += f"rangeRadius{self.sim_params.range_sensing_radius:.0f}_"
@@ -287,7 +311,7 @@ class ManhattanSimulator:
         if format == "efg":
             self._save_data_as_efg_format(data_dir)
         else:
-            raise NotImplementedError
+            raise NotImplementedError(f"Data format {format} is not supported.")
 
     def random_step(self) -> None:
         self._move_robots_randomly()
@@ -314,9 +338,9 @@ class ManhattanSimulator:
 
     def add_robot(
         self,
-        start_pose: SE2Pose = None,
-        range_model: RangeNoiseModel = ConstGaussRangeSensor(),
-        odom_model: OdomNoiseModel = GaussOdomSensor(),
+        start_pose: Optional[SE2Pose] = None,
+        range_model: Optional[RangeNoiseModel] = None,
+        odom_model: Optional[OdomNoiseModel] = None,
         loop_closure_model: LoopClosureModel = GaussianLoopClosureModel(),
     ) -> None:
         """Add a robot to the simulator. If no pose is provided, a random pose
@@ -332,16 +356,27 @@ class ManhattanSimulator:
                 closure model. Defaults to GaussianLoopClosureModel().
         """
 
-        assert isinstance(start_pose, SE2Pose) or start_pose is None
-        assert isinstance(range_model, RangeNoiseModel)
-        assert isinstance(odom_model, OdomNoiseModel)
-        assert isinstance(loop_closure_model, LoopClosureModel)
-
         # if no pose passed in, sample a random pose
-        name = f"Robot {len(self._robots)}"
+        num_existing_robots = len(self._robots)
+        name = f"Robot {num_existing_robots}"
         if start_pose is None:
             frame_name = f"{name} time: 0"
-            start_pose = self._env.get_random_robot_pose(local_frame=frame_name)
+            if num_existing_robots == 0:
+                start_pose = SE2Pose(
+                    0.0,
+                    0.0,
+                    0.0,
+                    local_frame=frame_name,
+                    base_frame="world",
+                )
+            else:
+                start_pose = self._env.get_random_robot_pose(local_frame=frame_name)
+
+        if range_model is None:
+            range_model = self._base_range_model
+
+        if odom_model is None:
+            odom_model = self._base_odometry_model
 
         # make sure that robot pose abides by the rules of the environment
         assert isinstance(start_pose, SE2Pose)
@@ -405,12 +440,13 @@ class ManhattanSimulator:
 
         save_to_efg_format(
             save_file,
-            self._odom_measurements,
-            self._groundtruth_poses,
-            self._beacons,
-            self._range_measurements,
-            self._range_associations,
-            self._groundtruth_range_associations,
+            odom_measurements=self._odom_measurements,
+            loop_closures=self._loop_closures,
+            gt_poses=self._groundtruth_poses,
+            beacons=self._beacons,
+            range_measurements=self._range_measurements,
+            range_associations=self._range_associations,
+            gt_range_associations=self._groundtruth_range_associations,
         )
         print(f"Saved file to: {save_file}")
 
@@ -435,13 +471,19 @@ class ManhattanSimulator:
                 robot
             )
 
-            # checks on possible moves
-            assert isinstance(possible_moves, list)
-            assert all(
-                isinstance(v[0], Point2) and isinstance(v[1], float)
-                for v in possible_moves
-            )
-            assert len(possible_moves) > 0
+            # remove any moves that would result in collision of robots
+            for other_robot_idx, other_robot in enumerate(self._robots):
+                if other_robot_idx == robot_idx:
+                    continue
+
+                for move_idx, move in enumerate(possible_moves):
+                    if other_robot.position == move[0]:
+                        possible_moves.pop(move_idx)
+                        break
+
+            # if no possible moves, we'll let the robot turn around
+            if len(possible_moves) == 0:
+                possible_moves.append(self._env.get_vertex_behind_robot(robot))
 
             # randomly select a move from the list
             move = choice(possible_moves)
@@ -464,7 +506,9 @@ class ManhattanSimulator:
             )
 
             # move the robot and store the measurement
-            odom_measurement = robot.move(move_transform)
+            odom_measurement = robot.move(
+                move_transform, self.sim_params.groundtruth_measurements
+            )
             self._store_odometry_measurement(robot_idx, odom_measurement)
 
             # make sure nothing weird happened with the timesteps
@@ -509,7 +553,9 @@ class ManhattanSimulator:
                 dist = cur_robot.distance_to_other_agent(other_robot)
 
                 if dist < self.sim_params.range_sensing_radius:
-                    measure = cur_robot.range_measurement_from_dist(dist)
+                    measure = cur_robot.range_measurement_from_dist(
+                        dist, self.sim_params.groundtruth_measurements
+                    )
                     self._add_robot_to_robot_range_measurement(
                         cur_robot_id, other_robot_id, measure
                     )
@@ -576,6 +622,7 @@ class ManhattanSimulator:
             loop_closure = cur_robot.get_loop_closure_measurement(
                 randomly_selected_pose
             )
+            print(f"Adding loop closure: {loop_closure}")
             self._loop_closures.append(loop_closure)
 
     def _get_incorrect_robot_to_robot_range_association(
@@ -808,7 +855,7 @@ class ManhattanSimulator:
                 shows the plot and waits for the user to close it.
         """
         if animation:
-            plt.pause(0.02)
+            plt.pause(0.002)
         else:
             plt.show(block=True)
             self._robot_plot_objects.clear()

@@ -7,8 +7,8 @@ from manhattan.simulator.simulator import ManhattanSimulator, SimulationParams
 
 sim_args = SimulationParams(
     grid_shape=(200, 200),
-    row_corner_number=10,
-    column_corner_number=5,
+    y_steps_to_intersection=10,
+    x_steps_to_intersection=5,
     cell_scale=1.0,
     range_sensing_prob=0.5,
     range_sensing_radius=10.0,

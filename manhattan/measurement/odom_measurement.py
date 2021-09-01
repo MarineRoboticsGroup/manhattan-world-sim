@@ -42,6 +42,14 @@ class OdomMeasurement:
         return line
 
     @property
+    def local_frame(self) -> str:
+        return self._measured_odom.local_frame
+
+    @property
+    def base_frame(self) -> str:
+        return self._measured_odom.base_frame
+
+    @property
     def true_odom(self) -> SE2Pose:
         """Get the true odometry"""
         return self._true_odom

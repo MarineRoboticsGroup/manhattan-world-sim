@@ -35,6 +35,23 @@ class LoopClosure:
         self._mean_offset = mean_offset
         self._covariance = covariance
 
+    def __str__(self) -> str:
+        return (
+            f"LoopClosure (t={self._timestamp})\n"
+            f"{self._pose_1} -> {self._pose_2}\n"
+            f"{self._measured_rel_pose}\n"
+            f"offset: {self._mean_offset}\n"
+            f"covariance:\n{self._covariance}"
+        )
+
+    @property
+    def base_frame(self) -> str:
+        return self._pose_1.local_frame
+
+    @property
+    def local_frame(self) -> str:
+        return self._pose_2.local_frame
+
     @property
     def true_transformation(self) -> SE2Pose:
         """

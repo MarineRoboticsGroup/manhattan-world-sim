@@ -19,8 +19,8 @@ fg_thread = flamegraph.start_profile_thread(fd=open(fg_log_path, "w"))
 
 sim_args = SimulationParams(
     grid_shape=(20, 20),
-    row_corner_number=2,
-    column_corner_number=2,
+    y_steps_to_intersection=2,
+    x_steps_to_intersection=2,
     cell_scale=1.0,
     range_sensing_prob=0.5,
     range_sensing_radius=40.0,

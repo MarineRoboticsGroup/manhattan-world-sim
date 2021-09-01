@@ -22,5 +22,4 @@ def choice(a: Sequence[object]) -> object:
     choices = [x for x in range(len(a))]
     choice_idx = np.random.choice(choices)
     sample = a[choice_idx]
-    assert len(sample) == 2
     return sample

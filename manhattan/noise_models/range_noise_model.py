@@ -60,21 +60,11 @@ class ConstantGaussianRangeNoiseModel(RangeNoiseModel):
     """
 
     def __init__(self, mean: float = 0.0, stddev: float = 0.1) -> None:
-        assert isinstance(mean, float)
-        assert isinstance(stddev, float)
-        assert stddev > 0
+        assert stddev >= 0
+        assert mean == 0.0, "only ever done zero mean noise so far"
 
         self._mean = mean
         self._stddev = stddev
-
-        # define the measurement model
-        # measurement_model = lambda true_dist, timestamp: RangeMeasurement(
-        #     true_dist,
-        #     np.random.normal(true_dist + mean, stddev),
-        #     mean,
-        #     stddev,
-        #     timestamp,
-        # )
 
         def measurement_model(true_dist: float, timestamp: int) -> RangeMeasurement:
             return RangeMeasurement(

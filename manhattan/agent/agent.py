@@ -76,15 +76,21 @@ class Agent:
         assert isinstance(dist, float)
         return dist
 
-    def range_measurement_from_dist(self, dist: float) -> RangeMeasurement:
+    def range_measurement_from_dist(
+        self, dist: float, gt_measure: bool = False
+    ) -> RangeMeasurement:
         """Returns the range measurement generated from a given distance
 
         Args:
             dist (float): the distance
+            gt_measure (bool): whether the measurement is the ground truth distance
 
         Returns:
             RangeMeasurement: the range measurement from this distance
         """
+        if gt_measure:
+            return RangeMeasurement(dist, dist, 0.0, 0.1, self.timestep)
+
         return self._range_model.get_range_measurement(dist, self.timestep)
 
 
@@ -148,12 +154,14 @@ class Robot(Agent):
             self.pose, other_pose, self.timestep
         )
 
-    def move(self, transform: SE2Pose) -> OdomMeasurement:
+    def move(self, transform: SE2Pose, gt_measure: bool) -> OdomMeasurement:
         """Moves the robot by the given transform and returns a noisy odometry
         measurement of the move
 
         Args:
             transform (SE2Pose): the transform to move the robot by
+            gt_measure (bool): whether the odometry measurement should be
+                the true movement
 
         Returns:
             SE2Pose: the noisy measurement of the transform
@@ -163,6 +171,11 @@ class Robot(Agent):
         # move the robot
         self._pose = self._pose * transform
         self._increment_timestep()
+
+        # if gt measure then just fake the noise and return the true transform
+        # as the measurement
+        if gt_measure:
+            return OdomMeasurement(transform, transform, np.zeros(3), np.eye(3))
 
         # get the odometry measurement
         odom_measurement = self._odom_model.get_odometry_measurement(transform)
@@ -185,8 +198,7 @@ class Robot(Agent):
         elif abs(self.heading + (np.pi / 2.0)) < heading_tol:
             return plt.plot(cur_position.x, cur_position.y, "bv", markersize=10)
         else:
-            print(f"Unhandled heading: {self.heading}")
-            raise NotImplementedError
+            raise NotImplementedError(f"Unhandled heading: {self.heading}")
 
 
 class Beacon(Agent):

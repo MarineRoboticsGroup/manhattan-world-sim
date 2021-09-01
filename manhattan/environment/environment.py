@@ -25,9 +25,7 @@ def _find_nearest(
         Tuple[int, float, float]: index of the nearest value, difference between
             values, and value of the nearest value
     """
-    assert isinstance(array, np.ndarray) or isinstance(array, list)
     assert len(array) > 0
-    assert isinstance(value, float)
 
     array = np.asarray(array)
     distances = np.abs(array - value)
@@ -36,7 +34,7 @@ def _find_nearest(
     return idx, delta, array[idx]
 
 
-# TODO rewrite to capture the row_corner_number and col_corner_number cases
+# TODO rewrite to capture the y_steps_to_intersection and col_corner_number cases
 class ManhattanWorld:
     """
     This class creates a simulated environment of Manhattan world with beacons.
@@ -45,8 +43,8 @@ class ManhattanWorld:
     def __init__(
         self,
         grid_vertices_shape: tuple = (9, 9),
-        row_corner_number: int = 1,
-        column_corner_number: int = 1,
+        y_steps_to_intersection: int = 1,
+        x_steps_to_intersection: int = 1,
         cell_scale: float = 1.0,
         robot_area: Optional[List[Tuple[int, int]]] = None,
         check_collision: bool = True,
@@ -75,10 +73,8 @@ class ManhattanWorld:
         self._num_x_pts += 1
         self._num_y_pts += 1
 
-        assert isinstance(row_corner_number, int)
-        assert isinstance(column_corner_number, int)
-        self._row_corner_number = row_corner_number
-        self._column_corner_number = column_corner_number
+        self._y_steps_to_intersection = y_steps_to_intersection
+        self._x_steps_to_intersection = x_steps_to_intersection
 
         assert isinstance(cell_scale, float)
         self._scale = cell_scale
@@ -149,8 +145,8 @@ class ManhattanWorld:
     def __str__(self):
         line = "ManhattanWorld Environment\n"
         line += "Shape: " + self.shape.__repr__() + "\n"
-        line += f"Row Corner Number: {self.row_corner_number}\n"
-        line += f"Column Corner Number: {self.column_corner_number}\n"
+        line += f"Row Corner Number: {self.y_steps_to_intersection}\n"
+        line += f"Column Corner Number: {self.x_steps_to_intersection}\n"
         line += f"Cell Scale: {self.cell_scale}\n"
         line += f"Robot Feasible Area: {self.robot_area}\n"
         line += (
@@ -226,15 +222,15 @@ class ManhattanWorld:
         """
         assert self.check_vertex_valid(vert)
         i, j = vert
-        candidate_vertices = [(i + 1, j), (i, j + 1), (i - 1, j), (i, j - 1)]
+        candidate_vertices = []
 
         # connectivity is based on whether we are at a corner or not
-        if i % self._column_corner_number == 0:
-            candidate_vertices.append((i - 1, j))
-            candidate_vertices.append((i + 1, j))
-        if j % self._row_corner_number == 0:
+        if i % self._x_steps_to_intersection == 0:
             candidate_vertices.append((i, j - 1))
             candidate_vertices.append((i, j + 1))
+        if j % self._y_steps_to_intersection == 0:
+            candidate_vertices.append((i - 1, j))
+            candidate_vertices.append((i + 1, j))
 
         # prune all vertices that are out of bounds
         vertices_in_bound = [
@@ -259,11 +255,13 @@ class ManhattanWorld:
 
         neighbor_verts = self.get_neighboring_vertices(vert)
         assert self.check_vertex_list_valid(neighbor_verts)
+        assert 2 <= len(neighbor_verts) <= 4
 
         feasible_neighbor_verts = [
             v for v in neighbor_verts if self.vertex_is_robot_feasible(v)
         ]
 
+        assert len(feasible_neighbor_verts) <= 4
         return feasible_neighbor_verts
 
     def get_neighboring_robot_vertices_not_behind_robot(
@@ -279,8 +277,41 @@ class ManhattanWorld:
             List[Tuple[Point2, float]]: the list of neighboring vertices that are
                 not behind the robot
         """
-        assert isinstance(robot, Robot)
+        # get robot position
+        robot_loc = robot.position
+        robot_pose = robot.pose
 
+        # get robot vertex
+        robot_vert = self.point2vertex(robot_loc)
+        assert self.check_vertex_valid(robot_vert)
+
+        # get neighboring vertices in the robot feasible space
+        neighboring_feasible_vertices = self.get_neighboring_robot_vertices(robot_vert)
+        assert self.check_vertex_list_valid(neighboring_feasible_vertices)
+
+        # convert vertices to points
+        neighboring_feasible_pts = [
+            self.vertex2point(v) for v in neighboring_feasible_vertices
+        ]
+        assert len(neighboring_feasible_pts) <= 4
+
+        not_behind_pts = []
+        for pt in neighboring_feasible_pts:
+            distance, bearing = robot_pose.range_and_bearing_to_point(pt)
+            if np.abs(bearing) < (np.pi / 2) + self._tol:
+                not_behind_pts.append((pt, bearing))
+
+        return not_behind_pts
+
+    def get_vertex_behind_robot(self, robot: Robot) -> Tuple[Point2, float]:
+        """get the vertex that is behind the robot
+
+        Args:
+            robot (Robot): the robot
+
+        Returns:
+            Tuple[Point2, float]: the vertex behind the robot
+        """
         # get robot position
         robot_loc = robot.position
         robot_pose = robot.pose
@@ -298,13 +329,12 @@ class ManhattanWorld:
             self.vertex2point(v) for v in neighboring_feasible_vertices
         ]
 
-        not_behind_pts = []
         for pt in neighboring_feasible_pts:
             distance, bearing = robot_pose.range_and_bearing_to_point(pt)
-            if np.abs(bearing) < (np.pi / 2) + self._tol:
-                not_behind_pts.append((pt, bearing))
+            if np.abs(bearing) > (np.pi / 2) + self._tol:
+                return (pt, bearing)
 
-        return not_behind_pts
+        raise ValueError("No vertex is behind the robot")
 
     def get_random_robot_pose(self, local_frame: str) -> SE2Pose:
         """Returns a random, feasible robot pose located on a corner in the
@@ -327,10 +357,10 @@ class ManhattanWorld:
         cornered_x_vals = np.zeros(feasible_x_vals.shape).astype(bool)
         cornered_y_vals = np.zeros(feasible_y_vals.shape).astype(bool)
         for i in range(len(cornered_x_vals)):
-            if i % self._column_corner_number == 0:
+            if i % self._x_steps_to_intersection == 0:
                 cornered_x_vals[i] = True
         for j in range(len(cornered_y_vals)):
-            if j % self._row_corner_number == 0:
+            if j % self._y_steps_to_intersection == 0:
                 cornered_y_vals[j] = True
 
         sampleable_x_vals = cornered_x_vals & feasible_x_vals
@@ -566,7 +596,10 @@ class ManhattanWorld:
 
         # vertex can only be feasible if on one of the lines defined by the
         # row/column spacing
-        if i % self._column_corner_number == 0 or j % self._row_corner_number == 0:
+        if (
+            i % self._x_steps_to_intersection == 0
+            or j % self._y_steps_to_intersection == 0
+        ):
             return self._robot_feasibility[i, j]
         else:
             return False
@@ -614,11 +647,11 @@ class ManhattanWorld:
 
         # get rows and cols that the robot is allowed to travel on
         x_pts = np.arange(self._num_x_pts)
-        valid_x = x_pts[x_pts % self._column_corner_number == 0]
+        valid_x = x_pts[x_pts % self._x_steps_to_intersection == 0]
         valid_x = self._scale * valid_x
 
         y_pts = np.arange(self._num_y_pts)
-        valid_y = y_pts[y_pts % self._row_corner_number == 0]
+        valid_y = y_pts[y_pts % self._y_steps_to_intersection == 0]
         valid_y = self._scale * valid_y
 
         # the bounds of the valid x and y values
@@ -636,8 +669,8 @@ class ManhattanWorld:
 
                 # the robot should not be traveling on these locations
                 if (
-                    i % self._column_corner_number != 0
-                    and j % self._row_corner_number != 0
+                    i % self._x_steps_to_intersection != 0
+                    and j % self._y_steps_to_intersection != 0
                 ):
                     continue
 
