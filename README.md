@@ -10,7 +10,7 @@ To run some sample code:
 
 ``` Bash
 # setup the environment (name assigned from the .yml file)
-conda env create -f env.yml
+conda create --name manhattan_sim python=3.9 numpy matplotlib
 conda activate manhattan_sim
 
 # run the example code from the example directory of this repository

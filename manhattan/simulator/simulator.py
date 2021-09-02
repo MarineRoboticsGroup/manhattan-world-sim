@@ -446,7 +446,7 @@ class ManhattanSimulator:
         Args:
             data_dir (str): the directory to save everything in
         """
-        save_file = f"{data_dir}/{self.file_name}.fg"
+        save_file = f"{data_dir}/factor_graph.fg"
         save_to_efg_format(
             save_file,
             odom_measurements=self._odom_measurements,
