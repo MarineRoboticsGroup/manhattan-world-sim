@@ -1,10 +1,11 @@
-from typing import Optional, NamedTuple, Tuple, List, Set
+from typing import Optional, Tuple, List, Set
 import numpy as np
 import matplotlib.pyplot as plt  # type: ignore
 import matplotlib  # type: ignore
 from os.path import isdir, isfile, join
 from os import mkdir, makedirs
 import json
+import attr
 
 from manhattan.environment.environment import ManhattanWorld
 from manhattan.agent.agent import Robot, Beacon
@@ -29,7 +30,8 @@ from manhattan.simulator.save_file_utils import save_to_efg_format
 from manhattan.utils.sample_utils import choice
 
 
-class SimulationParams(NamedTuple):
+@attr.s(frozen=True, auto_attribs=True)
+class SimulationParams:
     """
     Args:
         num_robots (int): Number of robots to simulate
@@ -77,30 +79,32 @@ class SimulationParams(NamedTuple):
             measured values regardless of noise model
     """
 
-    num_robots: int = 1
-    num_beacons: int = 0
-    grid_shape: Tuple = (10, 10)
-    y_steps_to_intersection: int = 1
-    x_steps_to_intersection: int = 1
-    cell_scale: float = 1.0
-    range_sensing_prob: float = 0.5
-    range_sensing_radius: float = 5.0
-    false_range_data_association_prob: float = 0.3
-    outlier_prob: float = 0.1
-    max_num_loop_closures: int = 100
-    loop_closure_prob: float = 0.1
-    loop_closure_radius: float = 2.0
-    false_loop_closure_prob: float = 0.1
-    range_stddev: float = 0.1
-    odom_x_stddev: float = 0.1
-    odom_y_stddev: float = 0.1
-    odom_theta_stddev: float = 0.1
-    loop_x_stddev: float = 0.1
-    loop_y_stddev: float = 0.1
-    loop_theta_stddev: float = 0.1
-    seed_num: int = 0
-    debug_mode: bool = False
-    groundtruth_measurements: bool = False
+    # TODO (alanpapalia) make use of the attrib_utils stuff to make validators
+    # for these attributes
+    num_robots: int = attr.ib(default=1)
+    num_beacons: int = attr.ib(default=0)
+    grid_shape: Tuple[int, int] = attr.ib(default=(10, 10))
+    y_steps_to_intersection: int = attr.ib(default=1)
+    x_steps_to_intersection: int = attr.ib(default=1)
+    cell_scale: float = attr.ib(default=1.0)
+    range_sensing_prob: float = attr.ib(default=0.5)
+    range_sensing_radius: float = attr.ib(default=1.0)
+    false_range_data_association_prob: float = attr.ib(default=0.2)
+    outlier_prob: float = attr.ib(default=0.1)
+    max_num_loop_closures: int = attr.ib(default=2)
+    loop_closure_prob: float = attr.ib(default=0.5)
+    loop_closure_radius: float = attr.ib(default=10)
+    false_loop_closure_prob: float = attr.ib(default=0.2)
+    range_stddev: float = attr.ib(default=5)
+    odom_x_stddev: float = attr.ib(default=1e-1)
+    odom_y_stddev: float = attr.ib(default=1e-1)
+    odom_theta_stddev: float = attr.ib(default=1e-2)
+    loop_x_stddev: float = attr.ib(default=1e-1)
+    loop_y_stddev: float = attr.ib(default=1e-1)
+    loop_theta_stddev: float = attr.ib(default=1e-2)
+    seed_num: int = attr.ib(default=0)
+    debug_mode: bool = attr.ib(default=False)
+    groundtruth_measurements: bool = attr.ib(default=False)
 
 
 # TODO integrate the probabilities of measurements into the simulator
@@ -317,10 +321,13 @@ class ManhattanSimulator:
         if not isdir(data_dir):
             makedirs(data_dir)
 
+        # save a .json with all of the simulation parameters
+        with open(data_dir + "/params.json", "w") as f:
+            json.dump(attr.asdict(self.sim_params), f)
+
         if format == "efg":
             self._save_data_as_efg_format(data_dir)
-            with open(data_dir + "/params.json", "w") as f:
-                json.dump(self.sim_params._asdict(), f)
+
         else:
             raise NotImplementedError(f"Data format {format} is not supported.")
 
