@@ -34,7 +34,6 @@ def _find_nearest(
     return idx, delta, array[idx]
 
 
-# TODO rewrite to capture the y_steps_to_intersection and col_corner_number cases
 class ManhattanWorld:
     """
     This class creates a simulated environment of Manhattan world with beacons.
@@ -392,7 +391,7 @@ class ManhattanWorld:
         """
         assert isinstance(frame, str)
 
-        # TODO this is also somewhat naive but it works... could revisit this later
+        # * this is also somewhat naive but it works... could revisit this later
 
         # get random beacon position by generating all possible coordinates and
         # then just pruning those that are not feasible for the beacon

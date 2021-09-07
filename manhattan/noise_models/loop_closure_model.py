@@ -131,7 +131,6 @@ class GaussianLoopClosureModel(LoopClosureModel):
             noise_sample, local_frame=rel_pose.local_frame, base_frame="temp"
         )
 
-        # TODO investigate this bold claim alan made
         # because we're in 2D rotations commute so we don't need to think about
         # the order of operations???
         noisy_pose_measurement = rel_pose * mean_offset * noise_offset

@@ -28,6 +28,12 @@ from manhattan.noise_models.loop_closure_model import (
 )
 from manhattan.simulator.save_file_utils import save_to_efg_format
 from manhattan.utils.sample_utils import choice
+from manhattan.utils.attrib_utils import (
+    probability_validator,
+    positive_float_validator,
+    positive_int_validator,
+    positive_int_tuple_validator,
+)
 
 
 @attr.s(frozen=True, auto_attribs=True)
@@ -79,30 +85,36 @@ class SimulationParams:
             measured values regardless of noise model
     """
 
-    # TODO (alanpapalia) make use of the attrib_utils stuff to make validators
-    # for these attributes
-    num_robots: int = attr.ib(default=1)
-    num_beacons: int = attr.ib(default=0)
-    grid_shape: Tuple[int, int] = attr.ib(default=(10, 10))
-    y_steps_to_intersection: int = attr.ib(default=1)
-    x_steps_to_intersection: int = attr.ib(default=1)
-    cell_scale: float = attr.ib(default=1.0)
-    range_sensing_prob: float = attr.ib(default=0.5)
-    range_sensing_radius: float = attr.ib(default=1.0)
-    false_range_data_association_prob: float = attr.ib(default=0.2)
-    outlier_prob: float = attr.ib(default=0.1)
-    max_num_loop_closures: int = attr.ib(default=2)
-    loop_closure_prob: float = attr.ib(default=0.5)
-    loop_closure_radius: float = attr.ib(default=10)
-    false_loop_closure_prob: float = attr.ib(default=0.2)
-    range_stddev: float = attr.ib(default=5)
-    odom_x_stddev: float = attr.ib(default=1e-1)
-    odom_y_stddev: float = attr.ib(default=1e-1)
-    odom_theta_stddev: float = attr.ib(default=1e-2)
-    loop_x_stddev: float = attr.ib(default=1e-1)
-    loop_y_stddev: float = attr.ib(default=1e-1)
-    loop_theta_stddev: float = attr.ib(default=1e-2)
-    seed_num: int = attr.ib(default=0)
+    num_robots: int = attr.ib(default=1, validator=positive_int_validator)
+    num_beacons: int = attr.ib(default=0, validator=positive_int_validator)
+    grid_shape: Tuple[int, int] = attr.ib(
+        default=(10, 10), validator=positive_int_tuple_validator
+    )
+    y_steps_to_intersection: int = attr.ib(default=1, validator=positive_int_validator)
+    x_steps_to_intersection: int = attr.ib(default=1, validator=positive_int_validator)
+    cell_scale: float = attr.ib(default=1.0, validator=positive_float_validator)
+    range_sensing_prob: float = attr.ib(default=0.5, validator=probability_validator)
+    range_sensing_radius: float = attr.ib(
+        default=1.0, validator=positive_float_validator
+    )
+    false_range_data_association_prob: float = attr.ib(
+        default=0.2, validator=probability_validator
+    )
+    outlier_prob: float = attr.ib(default=0.1, validator=probability_validator)
+    max_num_loop_closures: int = attr.ib(default=2, validator=positive_int_validator)
+    loop_closure_prob: float = attr.ib(default=0.5, validator=probability_validator)
+    loop_closure_radius: float = attr.ib(default=10, validator=positive_float_validator)
+    false_loop_closure_prob: float = attr.ib(
+        default=0.2, validator=probability_validator
+    )
+    range_stddev: float = attr.ib(default=5, validator=positive_float_validator)
+    odom_x_stddev: float = attr.ib(default=1e-1, validator=positive_float_validator)
+    odom_y_stddev: float = attr.ib(default=1e-1, validator=positive_float_validator)
+    odom_theta_stddev: float = attr.ib(default=1e-2, validator=positive_float_validator)
+    loop_x_stddev: float = attr.ib(default=1e-1, validator=positive_float_validator)
+    loop_y_stddev: float = attr.ib(default=1e-1, validator=positive_float_validator)
+    loop_theta_stddev: float = attr.ib(default=1e-2, validator=positive_float_validator)
+    seed_num: int = attr.ib(default=0, validator=positive_int_validator)
     debug_mode: bool = attr.ib(default=False)
     groundtruth_measurements: bool = attr.ib(default=False)
 
