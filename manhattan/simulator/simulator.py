@@ -603,7 +603,10 @@ class ManhattanSimulator:
 
             # roll dice to see if we can get a loop closure here. If greater
             # than this value then no loop closure
-            if np.random.rand() > self.sim_params.loop_closure_prob or (len(self._groundtruth_poses[cur_robot_id]) - 1 in self._sim_params.no_loop_pose_idx):
+            if np.random.rand() > self.sim_params.loop_closure_prob or (
+                len(self._groundtruth_poses[cur_robot_id]) - 1
+                in self._sim_params.no_loop_pose_idx
+            ):
                 continue
 
             cur_robot = self._robots[cur_robot_id]
@@ -617,7 +620,9 @@ class ManhattanSimulator:
 
                 # ignore the two most recent poses, as it shouldn't be
                 # considered for loop closures
-                candidate_pose_chain = self._groundtruth_poses[loop_clos_robot_id][:-self.sim_params.exclude_last_n_poses_for_loop_closure]
+                candidate_pose_chain = self._groundtruth_poses[loop_clos_robot_id][
+                    : -self.sim_params.exclude_last_n_poses_for_loop_closure
+                ]
                 for cand_pose in candidate_pose_chain:
 
                     # get difference between the current pose and the candidate pose
@@ -637,8 +642,7 @@ class ManhattanSimulator:
             if len(possible_loop_closures) > 0:
                 randomly_selected_pose = choice(possible_loop_closures)
                 loop_closure = cur_robot.get_loop_closure_measurement(
-                    randomly_selected_pose,
-                    self.sim_params.groundtruth_measurements
+                    randomly_selected_pose, self.sim_params.groundtruth_measurements
                 )
                 self._loop_closures.append(loop_closure)
 

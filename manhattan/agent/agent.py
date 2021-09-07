@@ -139,7 +139,9 @@ class Robot(Agent):
         """Returns the robot's current heading in radians"""
         return self.pose.theta
 
-    def get_loop_closure_measurement(self, other_pose: SE2Pose, gt_measure: bool = False) -> LoopClosure:
+    def get_loop_closure_measurement(
+        self, other_pose: SE2Pose, gt_measure: bool = False
+    ) -> LoopClosure:
         """Gets a loop closure measurement to another pose based on the Robot's
         loop closure model
 
