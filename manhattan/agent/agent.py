@@ -139,7 +139,7 @@ class Robot(Agent):
         """Returns the robot's current heading in radians"""
         return self.pose.theta
 
-    def get_loop_closure_measurement(self, other_pose: SE2Pose) -> LoopClosure:
+    def get_loop_closure_measurement(self, other_pose: SE2Pose, gt_measure: bool = False) -> LoopClosure:
         """Gets a loop closure measurement to another pose based on the Robot's
         loop closure model
 
@@ -150,8 +150,18 @@ class Robot(Agent):
             LoopClosure: the loop closure measurement
         """
         assert isinstance(other_pose, SE2Pose)
+        if gt_measure:
+            rel_pose = self.pose.transform_to(other_pose)
+            return LoopClosure(
+                self.pose,
+                other_pose,
+                rel_pose,
+                self.timestep,
+                self._loop_closure_model._mean,
+                self._loop_closure_model._covariance,
+            )
         return self._loop_closure_model.get_relative_pose_measurement(
-            self.pose, other_pose, self.timestep
+            self.pose, other_pose, self.timestep,gt_measure
         )
 
     def move(self, transform: SE2Pose, gt_measure: bool) -> OdomMeasurement:
