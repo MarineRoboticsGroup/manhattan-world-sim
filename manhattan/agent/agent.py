@@ -161,7 +161,7 @@ class Robot(Agent):
                 self._loop_closure_model._covariance,
             )
         return self._loop_closure_model.get_relative_pose_measurement(
-            self.pose, other_pose, self.timestep,gt_measure
+            self.pose, other_pose, self.timestep
         )
 
     def move(self, transform: SE2Pose, gt_measure: bool) -> OdomMeasurement:
