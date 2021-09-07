@@ -27,6 +27,14 @@ class LoopClosureModel:
             + f"Mean: {self._mean}\n"
         )
 
+    @property
+    def covariance(self) -> np.ndarray:
+        return self._covariance
+
+    @property
+    def mean(self) -> np.ndarray:
+        return self._mean
+
     @abstractmethod
     def get_relative_pose_measurement(
         self, pose_1: SE2Pose, pose_2: SE2Pose, association: str, timestamp: int
@@ -84,14 +92,6 @@ class GaussianLoopClosureModel(LoopClosureModel):
             + f"Covariance: {self._covariance.flatten()}\n"
             + f"Mean: {self._mean}\n"
         )
-
-    @property
-    def covariance(self):
-        return self._covariance
-
-    @property
-    def mean(self):
-        return self._mean
 
     def get_relative_pose_measurement(
         self, pose_1: SE2Pose, pose_2: SE2Pose, association: str, timestamp: int

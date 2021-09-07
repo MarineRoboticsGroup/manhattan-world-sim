@@ -620,7 +620,6 @@ class ManhattanSimulator:
 
             if len(possible_loop_closures) > 0:
                 randomly_selected_pose = choice(possible_loop_closures)
-                print(randomly_selected_pose)
 
                 # if there are enough options and RNG says to make a fake loop
                 # closure, we intentionally mess up the data association
@@ -636,12 +635,16 @@ class ManhattanSimulator:
 
                     # record the false pose as the measured data association
                     loop_closure = cur_robot.get_loop_closure_measurement(
-                        randomly_selected_pose, false_loop_closure_pose.local_frame
+                        randomly_selected_pose,
+                        false_loop_closure_pose.local_frame,
+                        self.sim_params.groundtruth_measurements,
                     )
                 else:
                     # otherwise just use the true loop closure
                     loop_closure = cur_robot.get_loop_closure_measurement(
-                        randomly_selected_pose, randomly_selected_pose.local_frame
+                        randomly_selected_pose,
+                        randomly_selected_pose.local_frame,
+                        self.sim_params.groundtruth_measurements,
                     )
 
                 self._loop_closures.append(loop_closure)

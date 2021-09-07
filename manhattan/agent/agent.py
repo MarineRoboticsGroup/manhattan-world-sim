@@ -140,7 +140,7 @@ class Robot(Agent):
         return self.pose.theta
 
     def get_loop_closure_measurement(
-        self, other_pose: SE2Pose, measure_association: str
+        self, other_pose: SE2Pose, measure_association: str, gt_measure: bool = False
     ) -> LoopClosure:
         """Gets a loop closure measurement to another pose based on the Robot's
         loop closure model
@@ -149,11 +149,25 @@ class Robot(Agent):
             other_pose (SE2Pose): the pose to measure the loop closure to
             measure_association (str): the assumed data association for the loop
                 closure (which pose the closure is thought to be measured to)
+            gt_measure (bool): whether the measurement is the ground truth
 
         Returns:
             LoopClosure: the loop closure measurement
         """
         assert isinstance(other_pose, SE2Pose)
+
+        if gt_measure:
+            true_transform = self.pose.transform_to(other_pose)
+            return LoopClosure(
+                self.pose,
+                other_pose,
+                measure_association,
+                true_transform,
+                self.timestep,
+                self._loop_closure_model.mean,
+                self._loop_closure_model.covariance,
+            )
+
         return self._loop_closure_model.get_relative_pose_measurement(
             self.pose, other_pose, measure_association, self.timestep
         )

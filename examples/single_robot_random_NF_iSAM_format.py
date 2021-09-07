@@ -9,7 +9,7 @@ from manhattan.simulator.simulator import ManhattanSimulator, SimulationParams
 import numpy as np
 
 for j in range(1, 3):
-    print()
+    print(f"\nSimulating {j} loop closures")
     for i in range(1, 11):
         sim_args = SimulationParams(
             num_robots=1,
@@ -35,7 +35,7 @@ for j in range(1, 3):
             loop_theta_stddev=1e-1,
             debug_mode=False,
             seed_num=i,
-            groundtruth_measurements=False,
+            groundtruth_measurements=True,
         )
         sim = ManhattanSimulator(sim_args)
 
