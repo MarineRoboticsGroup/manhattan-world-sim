@@ -25,7 +25,7 @@ for j in range(1, 3):
             max_num_loop_closures=j,
             loop_closure_prob=0.9,
             loop_closure_radius=99999.0,
-            false_loop_closure_prob=0.0,
+            false_loop_closure_prob=1.0,
             range_stddev=1e-1,
             odom_x_stddev=1e0,
             odom_y_stddev=0.2,

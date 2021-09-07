@@ -267,25 +267,6 @@ class ManhattanSimulator:
         line += f"Timestep: {self._timestep}\n"
 
     @property
-    def file_name(self) -> str:
-        line = f"simEnvironment_"
-        line += f"grid{self.sim_params.grid_shape[0]}x"
-        line += f"{self.sim_params.grid_shape[1]}_"
-        line += f"rowCorner{self.sim_params.y_steps_to_intersection}_"
-        line += f"colCorner{self.sim_params.x_steps_to_intersection}_"
-        line += f"cellScale{self.sim_params.cell_scale}_"
-        line += f"rangeProb{self.sim_params.range_sensing_prob}_"
-        line += f"rangeRadius{self.sim_params.range_sensing_radius:.0f}_"
-        line += f"falseRangeProb{self.sim_params.false_range_data_association_prob}_"
-        line += f"outlierProb{self.sim_params.outlier_prob}_"
-        line += f"loopClosureProb{self.sim_params.loop_closure_prob}_"
-        line += f"loopClosureRadius{self.sim_params.loop_closure_radius:.0f}_"
-        line += f"falseLoopClosureProb{self.sim_params.false_loop_closure_prob}_"
-        line += f"timestep{self._timestep}"
-        line = line.replace(".", "")
-        return line
-
-    @property
     def robots(self) -> List[Robot]:
         return self._robots
 
@@ -639,9 +620,30 @@ class ManhattanSimulator:
 
             if len(possible_loop_closures) > 0:
                 randomly_selected_pose = choice(possible_loop_closures)
-                loop_closure = cur_robot.get_loop_closure_measurement(
-                    randomly_selected_pose
-                )
+                print(randomly_selected_pose)
+
+                # if there are enough options and RNG says to make a fake loop
+                # closure, we intentionally mess up the data association
+                if (
+                    len(possible_loop_closures) > 1
+                    and np.random.rand() < self.sim_params.false_loop_closure_prob
+                ):
+
+                    # remove the true loop closure from the options and pick a
+                    # new one for the measured data association
+                    possible_loop_closures.remove(randomly_selected_pose)
+                    false_loop_closure_pose = choice(possible_loop_closures)
+
+                    # record the false pose as the measured data association
+                    loop_closure = cur_robot.get_loop_closure_measurement(
+                        randomly_selected_pose, false_loop_closure_pose.local_frame
+                    )
+                else:
+                    # otherwise just use the true loop closure
+                    loop_closure = cur_robot.get_loop_closure_measurement(
+                        randomly_selected_pose, randomly_selected_pose.local_frame
+                    )
+
                 self._loop_closures.append(loop_closure)
 
     def _get_incorrect_robot_to_robot_range_association(

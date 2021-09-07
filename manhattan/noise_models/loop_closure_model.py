@@ -29,7 +29,7 @@ class LoopClosureModel:
 
     @abstractmethod
     def get_relative_pose_measurement(
-        self, pose_1: SE2Pose, pose_2: SE2Pose, timestamp: int
+        self, pose_1: SE2Pose, pose_2: SE2Pose, association: str, timestamp: int
     ) -> LoopClosure:
         """Takes a two poses, and returns a loop closure measurement based on
         the relative pose from pose_1 to pose_2 and the determined sensor model.
@@ -40,6 +40,7 @@ class LoopClosureModel:
         Args:
             pose_1 (SE2Pose): the first pose
             pose_2 (SE2Pose): the second pose
+            association (str): the measured association of the second pose
             timestamp (int): the timestamp of the measurement
 
         Returns:
@@ -93,7 +94,7 @@ class GaussianLoopClosureModel(LoopClosureModel):
         return self._mean
 
     def get_relative_pose_measurement(
-        self, pose_1: SE2Pose, pose_2: SE2Pose, timestamp: int
+        self, pose_1: SE2Pose, pose_2: SE2Pose, association: str, timestamp: int
     ) -> LoopClosure:
         """Takes a two poses, gets the relative pose and then perturbs it by
         transformation randomly sampled from a Gaussian distribution and passed
@@ -105,6 +106,7 @@ class GaussianLoopClosureModel(LoopClosureModel):
         Args:
             pose_1 (SE2Pose): the first pose
             pose_2 (SE2Pose): the second pose
+            association (str): the measured association of the second pose
             timestamp (int): the timestamp of the measurement
 
         Returns:
@@ -136,6 +138,7 @@ class GaussianLoopClosureModel(LoopClosureModel):
         return LoopClosure(
             pose_1,
             pose_2,
+            association,
             noisy_pose_measurement,
             timestamp,
             self._mean,

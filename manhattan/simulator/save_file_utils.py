@@ -47,6 +47,21 @@ def get_pose_key_from_frame_name(frame: str) -> str:
     return f"{key_char}{pose_idx}"
 
 
+def _get_association_variable_str(association_var: str, timestamp: int) -> str:
+    assert "Robot" in association_var or "Beacon" in association_var
+    assert 0 <= timestamp
+
+    if "Robot" in association_var:
+        robot_char = get_robot_char_from_frame_name(association_var)
+        return f"{robot_char}{timestamp}"
+    elif "Beacon" in association_var:
+        beacon_str = "Beacon "
+        beacon_idx = int(association_var[len(beacon_str) :])
+        return f"L{beacon_idx}"
+
+    raise ValueError(f"association_var: {association_var},timestamp: {timestamp}")
+
+
 def save_to_efg_format(
     data_file: str,
     odom_measurements: List[List[OdomMeasurement]],
@@ -61,7 +76,7 @@ def save_to_efg_format(
     Save the given data to the extended factor graph format.
     """
 
-    def get_pose_measurement_string(pose: SE2Pose, cov: np.ndarray) -> str:
+    def get_normal_pose_measurement_string(pose: SE2Pose, cov: np.ndarray) -> str:
         """This is a utility function to get a formatted string to write to EFG
         formats for measurements which can be represented by poses (i.e.
         odometry and loop closures.
@@ -78,10 +93,38 @@ def save_to_efg_format(
         del_x = pose.x
         del_y = pose.y
         del_theta = pose.theta
-        line = f"{del_x} {del_y} {del_theta} "
+        line = f"{del_x:.15f} {del_y:.15f} {del_theta:.15f} "
 
         # add in covariance info
         line += "covariance "
+        covar_info = cov.flatten()
+        for val in covar_info:
+            line += f"{val:.15f} "
+
+        # return the formatted string
+        return line
+
+    def get_ambiguous_pose_measurement_string(pose: SE2Pose, cov: np.ndarray) -> str:
+        """This is a utility function to get a formatted string to write to EFG
+        formats for measurements which can be represented by poses (i.e.
+        odometry and loop closures.
+
+        Args:
+            pose (SE2Pose): the measurement
+
+        Returns:
+            str: the formatted string representation of the pose measurement
+        """
+        assert cov.shape == (3, 3)  # because only in SE2 (3 variables)
+
+        # add in odometry info
+        del_x = pose.x
+        del_y = pose.y
+        del_theta = pose.theta
+        line = f"{del_x:.15f} {del_y:.15f} {del_theta:.15f} "
+
+        # add in covariance info (Sigma == covariance)
+        line += "Sigma "
         covar_info = cov.flatten()
         for val in covar_info:
             line += f"{val:.15f} "
@@ -156,7 +199,7 @@ def save_to_efg_format(
 
         line += f"{base_key} {to_key} "
 
-        odom_info = get_pose_measurement_string(
+        odom_info = get_normal_pose_measurement_string(
             odom_measurement.measured_odom, odom_measurement.covariance
         )
         line += odom_info
@@ -177,24 +220,43 @@ def save_to_efg_format(
             str: the line representing the factor
         """
 
-        # Factor SE2RelativeGaussianLikelihoodFactor B2 B3 0.9102598585313532
-        # 0.06585288343000831 -0.0015874335137571194 covariance
-        # 0.010000000000000 0.000000000000000 0.000000000000000
-        # 0.000000000000000 0.010000000000000 0.000000000000000
-        # 0.000000000000000 0.000000000000000 0.000100000000000
-        line = "Factor SE2RelativeGaussianLikelihoodFactor "
-
         # add in which poses are being related
-        base_pose_key = get_pose_key_from_frame_name(loop_clos.base_frame)
-        to_pose_key = get_pose_key_from_frame_name(loop_clos.local_frame)
-        line += f"{base_pose_key} {to_pose_key} "
+        # get the key of the pose (e.g. A1 for Robot 0, timestep 1)
+        cur_id = get_pose_key_from_frame_name(loop_clos.base_frame)
+        measure_id = get_pose_key_from_frame_name(loop_clos.measured_association)
+        true_measure_id = get_pose_key_from_frame_name(loop_clos.true_association)
+
+        if measure_id == true_measure_id:
+            # Factor SE2RelativeGaussianLikelihoodFactor B2 B3
+            # 0.9102598585313532 0.06585288343000831 -0.0015874335137571194
+            # covariance 0.010000000000000 0.000000000000000 0.000000000000000
+            # 0.000000000000000 0.010000000000000 0.000000000000000
+            # 0.000000000000000 0.000000000000000 0.000100000000000
+            line = "Factor SE2RelativeGaussianLikelihoodFactor "
+            line += f"{cur_id} {true_measure_id} "
+
+            # add in the actual measurement info
+            loop_clos_data = get_normal_pose_measurement_string(
+                loop_clos.measurement, loop_clos.covariance
+            )
+            line += loop_clos_data
+        else:
+            # Factor AmbiguousDataAssociationFactor Observer X4 Observed X0 X1
+            # Weights 0.5 0.5 Binary SE2RelativeGaussianLikelihoodFactor
+            # Observation 20 48.28427124 1.570796327 Sigma 0.010000000000000002
+            # 0.0 0.0 0.0 0.010000000000000002 0.0 0.0 0.0 0.0009
+            line = "Factor AmbiguousDataAssociationFactor "
+            line += f"Observer {cur_id} "
+            line += f"Observed {true_measure_id} {measure_id} "
+            line += "Weights 0.5 0.5 Binary SE2RelativeGaussianLikelihoodFactor Observation "
+
+            # add in the actual measurement info
+            loop_clos_data = get_ambiguous_pose_measurement_string(
+                loop_clos.measurement, loop_clos.covariance
+            )
+            line += loop_clos_data
 
         # add in the measurement
-        loop_clos_data = get_pose_measurement_string(
-            loop_clos.measurement, loop_clos.covariance
-        )
-        line += loop_clos_data
-
         line += "\n"
         return line
 
@@ -203,23 +265,6 @@ def save_to_efg_format(
         association: Tuple[str, str],
         true_association: Tuple[str, str],
     ) -> str:
-        def get_association_variable_str(association_var: str, timestamp: int) -> str:
-            assert isinstance(association_var, str)
-            assert "Robot" in association_var or "Beacon" in association_var
-            assert isinstance(timestamp, int)
-            assert 0 <= timestamp
-
-            if "Robot" in association_var:
-                robot_char = get_robot_char_from_frame_name(association_var)
-                return f"{robot_char}{timestamp}"
-            elif "Beacon" in association_var:
-                beacon_str = "Beacon "
-                beacon_idx = int(association_var[len(beacon_str) :])
-                return f"L{beacon_idx}"
-
-            raise ValueError(
-                f"association_var: {association_var},timestamp: {timestamp}"
-            )
 
         timestamp = range_measure.timestamp
 
@@ -230,13 +275,13 @@ def save_to_efg_format(
         assert robot_str == true_association[0]
 
         # get the key of the pose (e.g. A1) for Robot 0, timestep 1
-        robot_id = get_association_variable_str(robot_str, timestamp)
+        robot_id = _get_association_variable_str(robot_str, timestamp)
 
         # get the key of the pose (e.g. A1) for Robot 0, timestep 1
         measure_id = association[1]
-        measure_id = get_association_variable_str(measure_id, timestamp)
+        measure_id = _get_association_variable_str(measure_id, timestamp)
         true_measure_id = true_association[1]
-        true_measure_id = get_association_variable_str(true_measure_id, timestamp)
+        true_measure_id = _get_association_variable_str(true_measure_id, timestamp)
 
         if measure_id == true_measure_id:
             # Factor SE2R2RangeGaussianLikelihoodFactor X0 L1 14.14214292904807 0.5
