@@ -13,9 +13,9 @@ for j in range(15, 16):
     for i in range(0, 10):
         print(f"\nSimulating {j} loop closures")
         sim_args = SimulationParams(
-            num_robots=4,
+            num_robots=1,
             num_beacons=0,
-            grid_shape=(5, 5),
+            grid_shape=(2, 2),
             y_steps_to_intersection=1,
             x_steps_to_intersection=1,
             cell_scale=20.0,

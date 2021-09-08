@@ -20,7 +20,7 @@ for j in range(15, 16):
             x_steps_to_intersection=1,
             cell_scale=20.0,
             range_sensing_prob=1.0,
-            range_sensing_radius=40.0,
+            range_sensing_radius=999.0,
             false_range_data_association_prob=0.0,
             outlier_prob=0.0,
             max_num_loop_closures=0,
