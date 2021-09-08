@@ -187,7 +187,12 @@ class Robot(Agent):
         # if gt measure then just fake the noise and return the true transform
         # as the measurement
         if gt_measure:
-            return OdomMeasurement(transform, transform, np.zeros(3), np.eye(3))
+            return OdomMeasurement(
+                transform,
+                transform,
+                self._odom_model._mean,
+                self._odom_model._covariance,
+            )
 
         # get the odometry measurement
         odom_measurement = self._odom_model.get_odometry_measurement(transform)
