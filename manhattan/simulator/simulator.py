@@ -83,7 +83,7 @@ class SimulationParams:
             checks
         groundtruth_measurements (bool): whether to use ground truth as the
             measured values regardless of noise model
-        no_loop_pose_idx (List): array of pose indices for which no loop closures will be generated
+        no_loop_pose_idx (List[int]): array of pose indices for which no loop closures will be generated
         exclude_last_n_poses_for_loop_closure (int): default is 2; exclude last n poses from LC candidates
     """
 
