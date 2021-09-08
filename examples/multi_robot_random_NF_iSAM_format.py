@@ -13,21 +13,21 @@ for j in range(15, 16):
     for i in range(0, 10):
         print(f"\nSimulating {j} loop closures")
         sim_args = SimulationParams(
-            num_robots=1,
+            num_robots=3,
             num_beacons=0,
-            grid_shape=(2, 2),
+            grid_shape=(3, 3),
             y_steps_to_intersection=1,
             x_steps_to_intersection=1,
             cell_scale=20.0,
-            range_sensing_prob=0.5,
+            range_sensing_prob=1.0,
             range_sensing_radius=40.0,
             false_range_data_association_prob=0.0,
             outlier_prob=0.0,
-            max_num_loop_closures=j,
-            loop_closure_prob=1.0,
-            loop_closure_radius=9999,
+            max_num_loop_closures=0,
+            loop_closure_prob=0.0,
+            loop_closure_radius=9999.0,
             false_loop_closure_prob=0.0,
-            range_stddev=1e-1,
+            range_stddev=2.0,
             odom_x_stddev=1e0,
             odom_y_stddev=1e0,
             odom_theta_stddev=0.2,
@@ -42,7 +42,7 @@ for j in range(15, 16):
         )
         sim = ManhattanSimulator(sim_args)
 
-        num_timesteps = 9
+        num_timesteps = 5
         # sim.plot_robot_states()
         # sim.show_plot(animation=True)
         for _ in range(num_timesteps):
