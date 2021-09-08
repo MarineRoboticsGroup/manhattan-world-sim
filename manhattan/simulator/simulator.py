@@ -860,7 +860,8 @@ class ManhattanSimulator:
         # this allows us to more efficiently update the animation
         for robot_plot_obj in self._robot_plot_objects:
             assert isinstance(robot_plot_obj, matplotlib.lines.Line2D)
-            self.ax.lines.remove(robot_plot_obj)
+            if robot_plot_obj in self.ax.lines:
+                self.ax.lines.remove(robot_plot_obj)
 
         self._robot_plot_objects.clear()
 
