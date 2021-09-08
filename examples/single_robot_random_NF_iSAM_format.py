@@ -8,13 +8,13 @@ from manhattan.simulator.simulator import ManhattanSimulator, SimulationParams
 
 import numpy as np
 
-for j in range(1, 2):
+for j in range(15, 16):
     print()
-    for i in range(1, 2):
+    for i in range(0, 10):
         sim_args = SimulationParams(
-            num_robots=1,
+            num_robots=4,
             num_beacons=0,
-            grid_shape=(1, 1),
+            grid_shape=(5, 5),
             y_steps_to_intersection=1,
             x_steps_to_intersection=1,
             cell_scale=20.0,
@@ -29,19 +29,19 @@ for j in range(1, 2):
             range_stddev=1e-1,
             odom_x_stddev=1e0,
             odom_y_stddev=1e0,
-            odom_theta_stddev=2e-1,
+            odom_theta_stddev=0.2,
             loop_x_stddev=1e0,
             loop_y_stddev=1e0,
-            loop_theta_stddev=2e-1,
+            loop_theta_stddev=0.2,
             debug_mode=False,
             seed_num=i,
             groundtruth_measurements=True,
-            no_loop_pose_idx=[0, 1, 2],
-            exclude_last_n_poses_for_loop_closure=3,
+            # no_loop_pose_idx=[0, 1, 2],
+            # exclude_last_n_poses_for_loop_closure=2
         )
         sim = ManhattanSimulator(sim_args)
 
-        num_timesteps = 4
+        num_timesteps = 9
         # sim.plot_robot_states()
         # sim.show_plot(animation=True)
         for _ in range(num_timesteps):
