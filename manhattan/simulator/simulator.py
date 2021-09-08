@@ -119,7 +119,7 @@ class SimulationParams:
     seed_num: int = attr.ib(default=0, validator=positive_int_validator)
     debug_mode: bool = attr.ib(default=False)
     groundtruth_measurements: bool = attr.ib(default=False)
-    no_loop_pose_idx: List = []
+    no_loop_pose_idx: List[int] = []
     exclude_last_n_poses_for_loop_closure: int = attr.ib(
         default=2, validator=positive_int_validator
     )
