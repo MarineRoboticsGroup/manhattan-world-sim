@@ -107,7 +107,6 @@ class GaussianOdomNoiseModel(OdomNoiseModel):
             noise_sample, local_frame=movement.local_frame, base_frame="temp"
         )
 
-        # TODO investigate this bold claim alan made
         # because we're in 2D rotations commute so we don't need to think about
         # the order of operations???
         noisy_odom_measurement = movement * mean_offset * noise_offset

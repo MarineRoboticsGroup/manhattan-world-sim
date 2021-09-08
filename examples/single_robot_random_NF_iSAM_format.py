@@ -11,6 +11,7 @@ import numpy as np
 for j in range(15, 16):
     print()
     for i in range(0, 10):
+        print(f"\nSimulating {j} loop closures")
         sim_args = SimulationParams(
             num_robots=4,
             num_beacons=0,

@@ -1,88 +1,65 @@
 import numpy as np
+import attr
 
 from manhattan.geometry.TwoDimension import SE2Pose
 from numpy import ndarray
 
 
+@attr.s(frozen=True)
 class LoopClosure:
     """
     represents a loop closure between poses
+
+    pose_1 (SE2Pose): the pose the loop closure is measured from
+    pose_2 (SE2Pose): the pose the loop closure is measured to
+    measured_association (str): the measurement association (can be
+        incorrect and differ from the true association)
+    measured_relative_pose (SE2Pose): the measured relative pose
+    timestamp (int): the timestamp of the measurement
+    mean_offset (np.ndarray): the mean offset in the measurement model
+    covariance (np.ndarray): the covariance of the measurement model
     """
 
-    def __init__(
-        self,
-        pose_1: SE2Pose,
-        pose_2: SE2Pose,
-        measured_relative_pose: SE2Pose,
-        timestamp: int,
-        mean_offset: np.ndarray,
-        covariance: np.ndarray,
-    ) -> None:
-        assert isinstance(pose_1, SE2Pose)
-        assert isinstance(pose_2, SE2Pose)
-        assert isinstance(measured_relative_pose, SE2Pose)
-        assert isinstance(timestamp, int)
-        assert isinstance(mean_offset, np.ndarray)
-        assert mean_offset.shape == (3,)
-        assert isinstance(covariance, np.ndarray)
-        assert covariance.shape == (3, 3)
-
-        self._pose_1 = pose_1
-        self._pose_2 = pose_2
-        self._measured_rel_pose = measured_relative_pose
-        self._timestamp = timestamp
-        self._true_transform = self._pose_1.transform_to(self._pose_2)
-        self._mean_offset = mean_offset
-        self._covariance = covariance
+    pose_1: SE2Pose = attr.ib()
+    pose_2: SE2Pose = attr.ib()
+    measured_association: str = attr.ib()
+    measured_rel_pose: SE2Pose = attr.ib()
+    timestamp: int = attr.ib()
+    mean_offset: np.ndarray = attr.ib()
+    covariance: np.ndarray = attr.ib()
 
     def __str__(self) -> str:
         return (
-            f"LoopClosure (t={self._timestamp})\n"
-            f"{self._pose_1} -> {self._pose_2}\n"
-            f"{self._measured_rel_pose}\n"
-            f"offset: {self._mean_offset}\n"
-            f"covariance:\n{self._covariance}"
+            f"LoopClosure (t={self.timestamp})\n"
+            f"{self.pose_1} -> {self.pose_2}\n"
+            f"measured association: {self.measured_association}\n"
+            f"{self.measured_rel_pose}\n"
+            f"offset: {self.mean_offset}\n"
+            f"covariance:\n{self.covariance}"
         )
 
     @property
+    def true_association(self) -> str:
+        """
+        the true association between poses
+        """
+        return self.pose_2.local_frame
+
+    @property
+    def true_transformation(self):
+        return self.pose_1.transform_to(self.pose_2)
+
+    @property
     def base_frame(self) -> str:
-        return self._pose_1.local_frame
+        return self.pose_1.local_frame
 
     @property
     def local_frame(self) -> str:
-        return self._pose_2.local_frame
-
-    @property
-    def true_transformation(self) -> SE2Pose:
-        """
-        returns the transformation between the poses
-        """
-        return self._true_transform
+        return self.pose_2.local_frame
 
     @property
     def measurement(self) -> SE2Pose:
         """
         returns the noisy transformation between the poses
         """
-        return self._measured_rel_pose
-
-    @property
-    def timestamp(self) -> int:
-        """
-        returns the timestamp of the pose
-        """
-        return self._timestamp
-
-    @property
-    def mean_offset(self) -> np.ndarray:
-        """
-        returns the mean offset in the measurement model
-        """
-        return self._mean_offset
-
-    @property
-    def covariance(self) -> np.ndarray:
-        """
-        returns the covariance of the measurement
-        """
-        return self._covariance
+        return self.measured_rel_pose

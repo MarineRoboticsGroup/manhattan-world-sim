@@ -1,10 +1,11 @@
-from typing import Optional, NamedTuple, Tuple, List, Set
+from typing import Optional, Tuple, List, Set
 import numpy as np
 import matplotlib.pyplot as plt  # type: ignore
 import matplotlib  # type: ignore
 from os.path import isdir, isfile, join
 from os import mkdir, makedirs
 import json
+import attr
 
 from manhattan.environment.environment import ManhattanWorld
 from manhattan.agent.agent import Robot, Beacon
@@ -27,9 +28,16 @@ from manhattan.noise_models.loop_closure_model import (
 )
 from manhattan.simulator.save_file_utils import save_to_efg_format
 from manhattan.utils.sample_utils import choice
+from manhattan.utils.attrib_utils import (
+    probability_validator,
+    positive_float_validator,
+    positive_int_validator,
+    positive_int_tuple_validator,
+)
 
 
-class SimulationParams(NamedTuple):
+@attr.s(frozen=True, auto_attribs=True)
+class SimulationParams:
     """
     Args:
         num_robots (int): Number of robots to simulate
@@ -79,32 +87,42 @@ class SimulationParams(NamedTuple):
         exclude_last_n_poses_for_loop_closure (int): default is 2; exclude last n poses from LC candidates
     """
 
-    num_robots: int = 1
-    num_beacons: int = 0
-    grid_shape: Tuple = (10, 10)
-    y_steps_to_intersection: int = 1
-    x_steps_to_intersection: int = 1
-    cell_scale: float = 1.0
-    range_sensing_prob: float = 0.5
-    range_sensing_radius: float = 5.0
-    false_range_data_association_prob: float = 0.3
-    outlier_prob: float = 0.1
-    max_num_loop_closures: int = 100
-    loop_closure_prob: float = 0.1
-    loop_closure_radius: float = 2.0
-    false_loop_closure_prob: float = 0.1
-    range_stddev: float = 0.1
-    odom_x_stddev: float = 0.1
-    odom_y_stddev: float = 0.1
-    odom_theta_stddev: float = 0.1
-    loop_x_stddev: float = 0.1
-    loop_y_stddev: float = 0.1
-    loop_theta_stddev: float = 0.1
-    seed_num: int = 0
-    debug_mode: bool = False
-    groundtruth_measurements: bool = False
+    num_robots: int = attr.ib(default=1, validator=positive_int_validator)
+    num_beacons: int = attr.ib(default=0, validator=positive_int_validator)
+    grid_shape: Tuple[int, int] = attr.ib(
+        default=(10, 10), validator=positive_int_tuple_validator
+    )
+    y_steps_to_intersection: int = attr.ib(default=1, validator=positive_int_validator)
+    x_steps_to_intersection: int = attr.ib(default=1, validator=positive_int_validator)
+    cell_scale: float = attr.ib(default=1.0, validator=positive_float_validator)
+    range_sensing_prob: float = attr.ib(default=0.5, validator=probability_validator)
+    range_sensing_radius: float = attr.ib(
+        default=1.0, validator=positive_float_validator
+    )
+    false_range_data_association_prob: float = attr.ib(
+        default=0.2, validator=probability_validator
+    )
+    outlier_prob: float = attr.ib(default=0.1, validator=probability_validator)
+    max_num_loop_closures: int = attr.ib(default=2, validator=positive_int_validator)
+    loop_closure_prob: float = attr.ib(default=0.5, validator=probability_validator)
+    loop_closure_radius: float = attr.ib(default=10, validator=positive_float_validator)
+    false_loop_closure_prob: float = attr.ib(
+        default=0.2, validator=probability_validator
+    )
+    range_stddev: float = attr.ib(default=5, validator=positive_float_validator)
+    odom_x_stddev: float = attr.ib(default=1e-1, validator=positive_float_validator)
+    odom_y_stddev: float = attr.ib(default=1e-1, validator=positive_float_validator)
+    odom_theta_stddev: float = attr.ib(default=1e-2, validator=positive_float_validator)
+    loop_x_stddev: float = attr.ib(default=1e-1, validator=positive_float_validator)
+    loop_y_stddev: float = attr.ib(default=1e-1, validator=positive_float_validator)
+    loop_theta_stddev: float = attr.ib(default=1e-2, validator=positive_float_validator)
+    seed_num: int = attr.ib(default=0, validator=positive_int_validator)
+    debug_mode: bool = attr.ib(default=False)
+    groundtruth_measurements: bool = attr.ib(default=False)
     no_loop_pose_idx: List = []
-    exclude_last_n_poses_for_loop_closure: int = 2
+    exclude_last_n_poses_for_loop_closure: int = attr.ib(
+        default=2, validator=positive_int_validator
+    )
 
 
 # TODO integrate the probabilities of measurements into the simulator
@@ -267,25 +285,6 @@ class ManhattanSimulator:
         line += f"Timestep: {self._timestep}\n"
 
     @property
-    def file_name(self) -> str:
-        line = f"simEnvironment_"
-        line += f"grid{self.sim_params.grid_shape[0]}x"
-        line += f"{self.sim_params.grid_shape[1]}_"
-        line += f"rowCorner{self.sim_params.y_steps_to_intersection}_"
-        line += f"colCorner{self.sim_params.x_steps_to_intersection}_"
-        line += f"cellScale{self.sim_params.cell_scale}_"
-        line += f"rangeProb{self.sim_params.range_sensing_prob}_"
-        line += f"rangeRadius{self.sim_params.range_sensing_radius:.0f}_"
-        line += f"falseRangeProb{self.sim_params.false_range_data_association_prob}_"
-        line += f"outlierProb{self.sim_params.outlier_prob}_"
-        line += f"loopClosureProb{self.sim_params.loop_closure_prob}_"
-        line += f"loopClosureRadius{self.sim_params.loop_closure_radius:.0f}_"
-        line += f"falseLoopClosureProb{self.sim_params.false_loop_closure_prob}_"
-        line += f"timestep{self._timestep}"
-        line = line.replace(".", "")
-        return line
-
-    @property
     def robots(self) -> List[Robot]:
         return self._robots
 
@@ -321,10 +320,13 @@ class ManhattanSimulator:
         if not isdir(data_dir):
             makedirs(data_dir)
 
+        # save a .json with all of the simulation parameters
+        with open(data_dir + "/params.json", "w") as f:
+            json.dump(attr.asdict(self.sim_params), f)
+
         if format == "efg":
             self._save_data_as_efg_format(data_dir)
-            with open(data_dir + "/params.json", "w") as f:
-                json.dump(self.sim_params._asdict(), f)
+
         else:
             raise NotImplementedError(f"Data format {format} is not supported.")
 
@@ -450,7 +452,7 @@ class ManhattanSimulator:
         Args:
             data_dir (str): the directory to save everything in
         """
-        save_file = f"{data_dir}/{self.file_name}.fg"
+        save_file = f"{data_dir}/factor_graph.fg"
         save_to_efg_format(
             save_file,
             odom_measurements=self._odom_measurements,
@@ -641,9 +643,33 @@ class ManhattanSimulator:
 
             if len(possible_loop_closures) > 0:
                 randomly_selected_pose = choice(possible_loop_closures)
-                loop_closure = cur_robot.get_loop_closure_measurement(
-                    randomly_selected_pose, self.sim_params.groundtruth_measurements
-                )
+
+                # if there are enough options and RNG says to make a fake loop
+                # closure, we intentionally mess up the data association
+                if (
+                    len(possible_loop_closures) > 1
+                    and np.random.rand() < self.sim_params.false_loop_closure_prob
+                ):
+
+                    # remove the true loop closure from the options and pick a
+                    # new one for the measured data association
+                    possible_loop_closures.remove(randomly_selected_pose)
+                    false_loop_closure_pose = choice(possible_loop_closures)
+
+                    # record the false pose as the measured data association
+                    loop_closure = cur_robot.get_loop_closure_measurement(
+                        randomly_selected_pose,
+                        false_loop_closure_pose.local_frame,
+                        self.sim_params.groundtruth_measurements,
+                    )
+                else:
+                    # otherwise just use the true loop closure
+                    loop_closure = cur_robot.get_loop_closure_measurement(
+                        randomly_selected_pose,
+                        randomly_selected_pose.local_frame,
+                        self.sim_params.groundtruth_measurements,
+                    )
+
                 self._loop_closures.append(loop_closure)
 
     def _get_incorrect_robot_to_robot_range_association(
