@@ -17,7 +17,7 @@ def _get_robot_char_from_number(robot_number: int) -> str:
     """
     char = chr(ord("A") + robot_number)
     assert char != "L", "Character L is reserved for landmarks"
-    return "X"
+    # return "X"
     return char
 
 
@@ -285,7 +285,13 @@ def save_to_efg_format(
 
         if measure_id == true_measure_id:
             # Factor SE2R2RangeGaussianLikelihoodFactor X0 L1 14.14214292904807 0.5
-            line = "Factor SE2R2RangeGaussianLikelihoodFactor "
+            if true_measure_id[0] == "L":
+                # L is reserved for landmark names
+                range_factor_type = "SE2R2RangeGaussianLikelihoodFactor"
+            else:
+                # ID starts with other letters are robots
+                range_factor_type = "SE2SE2RangeGaussianLikelihoodFactor"
+            line = f"Factor {range_factor_type} "
             line += f"{robot_id} {true_measure_id} "
             line += (
                 f"{range_measure.measured_distance:.15f} {range_measure.stddev:.15f}\n"
