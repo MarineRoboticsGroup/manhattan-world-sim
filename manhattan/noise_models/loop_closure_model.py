@@ -82,9 +82,6 @@ class GaussianLoopClosureModel(LoopClosureModel):
         assert covariance.shape == (3, 3)
         self._mean = mean
         self._covariance = covariance
-        self._covariance[0, 0] = 1.0
-        self._covariance[1, 1] = 0.04
-        self._covariance[2, 2] = 0.01
 
     def __str__(self):
         return (

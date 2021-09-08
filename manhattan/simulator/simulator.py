@@ -83,6 +83,8 @@ class SimulationParams:
             checks
         groundtruth_measurements (bool): whether to use ground truth as the
             measured values regardless of noise model
+        no_loop_pose_idx (List[int]): array of pose indices for which no loop closures will be generated
+        exclude_last_n_poses_for_loop_closure (int): default is 2; exclude last n poses from LC candidates
     """
 
     num_robots: int = attr.ib(default=1, validator=positive_int_validator)
@@ -117,6 +119,10 @@ class SimulationParams:
     seed_num: int = attr.ib(default=0, validator=positive_int_validator)
     debug_mode: bool = attr.ib(default=False)
     groundtruth_measurements: bool = attr.ib(default=False)
+    no_loop_pose_idx: List[int] = attr.ib(default=[])
+    exclude_last_n_poses_for_loop_closure: int = attr.ib(
+        default=2, validator=positive_int_validator
+    )
 
 
 # TODO integrate the probabilities of measurements into the simulator
@@ -599,7 +605,10 @@ class ManhattanSimulator:
 
             # roll dice to see if we can get a loop closure here. If greater
             # than this value then no loop closure
-            if np.random.rand() > self.sim_params.loop_closure_prob:
+            if np.random.rand() > self.sim_params.loop_closure_prob or (
+                len(self._groundtruth_poses[cur_robot_id]) - 1
+                in self._sim_params.no_loop_pose_idx
+            ):
                 continue
 
             cur_robot = self._robots[cur_robot_id]
@@ -613,7 +622,9 @@ class ManhattanSimulator:
 
                 # ignore the two most recent poses, as it shouldn't be
                 # considered for loop closures
-                candidate_pose_chain = self._groundtruth_poses[loop_clos_robot_id][:-2]
+                candidate_pose_chain = self._groundtruth_poses[loop_clos_robot_id][
+                    : -self.sim_params.exclude_last_n_poses_for_loop_closure
+                ]
                 for cand_pose in candidate_pose_chain:
 
                     # get difference between the current pose and the candidate pose
@@ -875,7 +886,8 @@ class ManhattanSimulator:
         # this allows us to more efficiently update the animation
         for robot_plot_obj in self._robot_plot_objects:
             assert isinstance(robot_plot_obj, matplotlib.lines.Line2D)
-            self.ax.lines.remove(robot_plot_obj)
+            if robot_plot_obj in self.ax.lines:
+                self.ax.lines.remove(robot_plot_obj)
 
         self._robot_plot_objects.clear()
 
