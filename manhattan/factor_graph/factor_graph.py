@@ -4,8 +4,6 @@ import attr
 import os
 import pickle
 
-from manhattan.geometry.TwoDimension import SE2Pose, Point2
-
 
 @attr.s(frozen=True)
 class PoseVariable:
@@ -64,7 +62,7 @@ class LandmarkVariable:
 
 
 @attr.s(frozen=True)
-class OdomMeasurement:
+class PoseMeasurement:
     """
     An pose measurement
 
@@ -144,22 +142,23 @@ class OdomMeasurement:
         )
 
 
-# TODO finish this class and integrate it
 @attr.s(frozen=True)
-class AmbiguousOdomMeasurement:
+class AmbiguousPoseMeasurement:
     """
     An ambiguous odom measurement
 
     base_pose (str): the name of the base pose which the measurement is in the
         reference frame of
-    local_pose (str): the name of the pose the measurement is to
+    measured_to_pose (str): the name of the pose the measurement thinks it is to
+    true_to_pose (str): the name of the pose the measurement is to
     position (Tuple[float,float]): the change in x and y
     theta (float): the change in theta
     covariance (np.ndarray): a 3x3 covariance matrix
     """
 
     base_pose: str = attr.ib()
-    to_pose: str = attr.ib()
+    measured_to_pose: str = attr.ib()
+    true_to_pose: str = attr.ib()
     x: float = attr.ib()
     y: float = attr.ib()
     theta: float = attr.ib()
@@ -199,31 +198,30 @@ class AmbiguousOdomMeasurement:
         return np.array([self.x, self.y])
 
     @property
-    def base_pose_idx(self) -> int:
+    def covariance(self):
         """
-        Get the index of the base pose
+        Get the covariance matrix
         """
-        return int(self.base_pose[1:])
-
-    @property
-    def to_pose_idx(self) -> int:
-        """
-        Get the index of the to pose
-        """
-        return int(self.to_pose[1:])
+        return np.array(
+            [
+                [1 / self.translation_weight, 0, 0],
+                [0, 1 / self.translation_weight, 0],
+                [0, 0, 1 / self.rotation_weight],
+            ]
+        )
 
 
 @attr.s(frozen=True)
-class RangeMeasurement:
+class FGRangeMeasurement:
     """A range measurement
 
     Arguments:
-        association (List[str]): the data associations of the measurement
+        association (Tuple[str]): the data associations of the measurement
         dist (float): The measured range
         stddev (float): The standard deviation
     """
 
-    association: List[str] = attr.ib()
+    association: Tuple[str, str] = attr.ib()
     dist: float = attr.ib()
     stddev: float = attr.ib()
 
@@ -258,9 +256,8 @@ class RangeMeasurement:
         return int(self.var2[1:])
 
 
-# TODO finish this class and integrate it
 @attr.s(frozen=True)
-class AmbiguousRangeMeasurement:
+class AmbiguousFGRangeMeasurement:
     """A range measurement
 
     Arguments:
@@ -270,8 +267,8 @@ class AmbiguousRangeMeasurement:
         stddev (float): The standard deviation
     """
 
-    true_association: List[str] = attr.ib()
-    measured_association: List[str] = attr.ib()
+    true_association: Tuple[str, str] = attr.ib()
+    measured_association: Tuple[str, str] = attr.ib()
     dist: float = attr.ib()
     stddev: float = attr.ib()
 
@@ -364,23 +361,32 @@ class FactorGraphData:
     Args:
         pose_variables (List[PoseVariable]): a list of the pose variables
         landmark_variables (List[LandmarkVariable]): a list of the landmarks
-        odom_measurements (List[OdomMeasurement]): a list of odom
+        pose_measurements (List[PoseMeasurement]): a list of odom
             measurements
-        range_measurements (List[RangeMeasurement]): a list of range
+        ambiguous_pose_measurements (List[AmbiguousPoseMeasurement]): a list of
+            ambiguous pose measurements
+        range_measurements (List[FGRangeMeasurement]): a list of range
             measurements
+        ambiguous_range_measurements (List[AmbiguousFGRangeMeasurement]): a list
+            of ambiguous range measurements
         pose_priors (List[PosePrior]): a list of the pose priors
         landmark_priors (List[LandmarkPrior]): a list of the landmark priors
     """
 
     pose_variables: List[PoseVariable] = attr.ib(factory=list)
     landmark_variables: List[LandmarkVariable] = attr.ib(factory=list)
-    odom_measurements: List[OdomMeasurement] = attr.ib(factory=list)
-    range_measurements: List[RangeMeasurement] = attr.ib(factory=list)
+    pose_measurements: List[PoseMeasurement] = attr.ib(factory=list)
+    ambiguous_pose_measurements: List[AmbiguousPoseMeasurement] = attr.ib(factory=list)
+    range_measurements: List[FGRangeMeasurement] = attr.ib(factory=list)
+    ambiguous_range_measurements: List[AmbiguousFGRangeMeasurement] = attr.ib(
+        factory=list
+    )
     pose_priors: List[PosePrior] = attr.ib(factory=list)
     landmark_priors: List[LandmarkPrior] = attr.ib(factory=list)
     _dimension: int = attr.ib(default=2)
 
     def __str__(self):
+        # TODO add ambiguous measurements
         line = "Factor Graph Data\n"
 
         # add pose variables
@@ -396,8 +402,8 @@ class FactorGraphData:
         line += "\n"
 
         # add odom measurements
-        line += f"odom Measurements: {len(self.odom_measurements)}\n"
-        for x in self.odom_measurements:
+        line += f"odom Measurements: {len(self.pose_measurements)}\n"
+        for x in self.pose_measurements:
             line += f"{x}\n"
         line += "\n"
 
@@ -495,12 +501,12 @@ class FactorGraphData:
         return len(self.range_measurements)
 
     @property
-    def num_odom_measurements(self):
-        return len(self.odom_measurements)
+    def num_pose_measurements(self):
+        return len(self.pose_measurements)
 
     @property
     def num_total_measurements(self):
-        return self.num_range_measurements + self.num_odom_measurements
+        return self.num_range_measurements + self.num_pose_measurements
 
     @property
     def dist_measurements_vect(self) -> np.ndarray:
@@ -540,20 +546,20 @@ class FactorGraphData:
     def add_pose_variable(self, pose_var: PoseVariable):
         self.pose_variables.append(pose_var)
 
-    def add_pose_variable_from_SE2(self, pose_var: SE2Pose):
-        pose_name = pose_var.local_frame
-        true_pos = (pose_var.x, pose_var.y)
-        true_theta = pose_var.theta
-        self.pose_variables.append(PoseVariable(pose_name, true_pos, true_theta))
-
     def add_landmark_variable(self, landmark_var: LandmarkVariable):
         self.landmark_variables.append(landmark_var)
 
-    def add_odom_measurement(self, odom_meas: OdomMeasurement):
-        self.odom_measurements.append(odom_meas)
+    def add_pose_measurement(self, odom_meas: PoseMeasurement):
+        self.pose_measurements.append(odom_meas)
 
-    def add_range_measurement(self, range_meas: RangeMeasurement):
+    def add_ambiguous_pose_measurement(self, measure: AmbiguousPoseMeasurement):
+        self.ambiguous_pose_measurements.append(measure)
+
+    def add_range_measurement(self, range_meas: FGRangeMeasurement):
         self.range_measurements.append(range_meas)
+
+    def add_ambiguous_range_measurement(self, measure: AmbiguousFGRangeMeasurement):
+        self.ambiguous_range_measurements.append(measure)
 
     def add_pose_prior(self, pose_prior: PosePrior):
         self.pose_priors.append(pose_prior)
@@ -563,11 +569,11 @@ class FactorGraphData:
 
     #### Accessors for the data
 
-    def get_range_measurement_pose(self, measure: RangeMeasurement) -> PoseVariable:
+    def get_range_measurement_pose(self, measure: FGRangeMeasurement) -> PoseVariable:
         """Gets the pose associated with the range measurement
 
         Arguments:
-            measure (RangeMeasurement): the range measurement
+            measure (FGRangeMeasurement): the range measurement
 
         Returns:
             PoseVariable: the pose variable associated with the range
@@ -578,12 +584,12 @@ class FactorGraphData:
         return self.pose_variables[pose_idx]
 
     def get_range_measurement_landmark(
-        self, measure: RangeMeasurement
+        self, measure: FGRangeMeasurement
     ) -> LandmarkVariable:
         """Returns the landmark variable associated with this range measurement
 
         Arguments:
-            measure (RangeMeasurement): the range measurement
+            measure (FGRangeMeasurement): the range measurement
 
         Returns:
             LandmarkVariable: the landmark variable associated with the range
@@ -666,13 +672,13 @@ class FactorGraphData:
 
         return (start, stop)
 
-    def get_range_dist_variable_indices(self, measurement: RangeMeasurement) -> int:
+    def get_range_dist_variable_indices(self, measurement: FGRangeMeasurement) -> int:
         """
         Get the index for the distance variable corresponding to
         this measurement in the factor graph
 
         Args:
-            measurement (RangeMeasurement): the measurement
+            measurement (FGRangeMeasurement): the measurement
 
         Returns:
             int: the index of the distance variable
@@ -723,22 +729,28 @@ class FactorGraphData:
         Save the given data to the extended factor graph format.
         """
 
-        def get_normal_pose_measurement_string(pose_measure: OdomMeasurement) -> str:
+        def get_normal_pose_measurement_string(pose_measure: PoseMeasurement) -> str:
             """This is a utility function to get a formatted string to write to EFG
             formats for measurements which can be represented by poses (i.e.
             odometry and loop closures.
 
             Args:
-                pose (OdomMeasurement): the measurement
+                pose (PoseMeasurement): the measurement
 
             Returns:
                 str: the formatted string representation of the pose measurement
             """
+            line = "Factor SE2RelativeGaussianLikelihoodFactor "
+
+            base_key = pose_measure.base_pose
+            to_key = pose_measure.to_pose
+            line += f"{base_key} {to_key} "
+
             # add in odometry info
             del_x = pose_measure.x
             del_y = pose_measure.y
             del_theta = pose_measure.theta
-            line = f"{del_x:.15f} {del_y:.15f} {del_theta:.15f} "
+            line += f"{del_x:.15f} {del_y:.15f} {del_theta:.15f} "
 
             # add in covariance info
             line += "covariance "
@@ -746,11 +758,12 @@ class FactorGraphData:
             for val in covar_info:
                 line += f"{val:.15f} "
 
+            line += "\n"
             # return the formatted string
             return line
 
         def get_ambiguous_pose_measurement_string(
-            pose: AmbiguousOdomMeasurement, cov: np.ndarray
+            pose_measure: AmbiguousPoseMeasurement,
         ) -> str:
             """This is a utility function to get a formatted string to write to EFG
             formats for measurements which can be represented by poses (i.e.
@@ -762,20 +775,29 @@ class FactorGraphData:
             Returns:
                 str: the formatted string representation of the pose measurement
             """
-            assert cov.shape == (3, 3)  # because only in SE2 (3 variables)
+            line = "Factor AmbiguousDataAssociationFactor "
+
+            cur_id = pose_measure.base_pose
+            line += f"Observer {cur_id} "
+
+            true_measure_id = pose_measure.true_to_pose
+            measure_id = pose_measure.measured_to_pose
+            line += f"Observed {true_measure_id} {measure_id} "
+            line += "Weights 0.5 0.5 Binary SE2RelativeGaussianLikelihoodFactor Observation "
 
             # add in odometry info
-            del_x = pose.x
-            del_y = pose.y
-            del_theta = pose.theta
+            del_x = pose_measure.x
+            del_y = pose_measure.y
+            del_theta = pose_measure.theta
             line = f"{del_x:.15f} {del_y:.15f} {del_theta:.15f} "
 
             # add in covariance info (Sigma == covariance)
             line += "Sigma "
-            covar_info = cov.flatten()
+            covar_info = pose_measure.covariance.flatten()
             for val in covar_info:
                 line += f"{val:.15f} "
 
+            line += "\n"
             # return the formatted string
             return line
 
@@ -827,13 +849,13 @@ class FactorGraphData:
             return line
 
         def get_range_measurement_string(
-            range_measure: RangeMeasurement,
+            range_measure: FGRangeMeasurement,
         ) -> str:
             """Returns the string representing a range factor based on the provided
             range measurement and the association information.
 
             Args:
-                range_measure (RangeMeasurement): the measurement info (value and
+                range_measure (FGRangeMeasurement): the measurement info (value and
                     stddev)
 
             Returns:
@@ -856,13 +878,13 @@ class FactorGraphData:
             return line
 
         def get_ambiguous_range_measurement_string(
-            range_measure: AmbiguousRangeMeasurement,
+            range_measure: AmbiguousFGRangeMeasurement,
         ) -> str:
             """Returns the string representing an ambiguous range factor based on
             the provided range measurement and the association information.
 
             Args:
-                range_measure (AmbiguousRangeMeasurement): the measurement info
+                range_measure (AmbiguousFGRangeMeasurement): the measurement info
                     (value and stddev)
 
             Returns:
@@ -904,12 +926,20 @@ class FactorGraphData:
             line = get_prior_to_pin_string(prior)
             file_writer.write(line)
 
-        for odom_measure in self.odom_measurements:
+        for odom_measure in self.pose_measurements:
             line = get_normal_pose_measurement_string(odom_measure)
+            file_writer.write(line)
+
+        for amb_odom_measure in self.ambiguous_pose_measurements:
+            line = get_ambiguous_pose_measurement_string(amb_odom_measure)
             file_writer.write(line)
 
         for range_measure in self.range_measurements:
             line = get_range_measurement_string(range_measure)
+            file_writer.write(line)
+
+        for amb_range_measure in self.ambiguous_range_measurements:
+            line = get_ambiguous_range_measurement_string(amb_range_measure)
             file_writer.write(line)
 
         file_writer.close()

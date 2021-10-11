@@ -2,7 +2,6 @@ import numpy as np
 import attr
 
 from manhattan.geometry.TwoDimension import SE2Pose
-from numpy import ndarray
 
 
 @attr.s(frozen=True)
@@ -63,3 +62,38 @@ class LoopClosure:
         returns the noisy transformation between the poses
         """
         return self.measured_rel_pose
+
+    @property
+    def delta_x(self) -> float:
+        """
+        returns the delta x in the measurement model
+        """
+        return self.measurement.x
+
+    @property
+    def delta_y(self) -> float:
+        """
+        returns the delta y in the measurement model
+        """
+        return self.measurement.y
+
+    @property
+    def delta_theta(self) -> float:
+        """
+        returns the delta theta in the measurement model
+        """
+        return self.measurement.theta
+
+    @property
+    def translation_weight(self) -> float:
+        """
+        returns the precision of the translation
+        """
+        return 1 / self.covariance[0, 0]
+
+    @property
+    def rotation_weight(self) -> float:
+        """
+        returns the precision of the rotation
+        """
+        return 1 / self.covariance[2, 2]

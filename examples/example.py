@@ -8,14 +8,17 @@ from manhattan.simulator.simulator import ManhattanSimulator, SimulationParams
 
 import numpy as np
 
-for num_timesteps in [10, 100, 1000, 10000, 100000]:
+for num_timesteps in [10]:
+    # for num_timesteps in [10, 100, 1000, 10000, 100000]:
     for pos_stddev in [1e-2, 1e-1]:
-        for theta_stddev in [1e-3, 1e-2, 1e-1]:
+        for theta_stddev in [1e-3]:
+            # for theta_stddev in [1e-3, 1e-2, 1e-1]:
             for dist_stddev in [1e-2, 1e-1, 1]:
                 for num_beacons in [1, 3, 5]:
-                    for grid_len in [10, 20, 50]:
+                    for grid_len in [10]:
+                        # for grid_len in [10, 20, 50]:
                         print()
-                        for i in range(0, 10):
+                        for i in range(0, 1):
                             sim_args = SimulationParams(
                                 num_robots=1,
                                 num_beacons=3,
@@ -63,4 +66,5 @@ for num_timesteps in [10, 100, 1000, 10000, 100000]:
                                     f"seed_{sim_args.seed_num}",
                                 )
                             )
+                            # sim.save_simulation_data(data_dir, format="pickle")
                             sim.save_simulation_data(data_dir, format="efg")

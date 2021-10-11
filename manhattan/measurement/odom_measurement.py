@@ -68,3 +68,32 @@ class OdomMeasurement:
     def covariance(self) -> np.ndarray:
         """Get the covariance"""
         return self._covariance
+
+    @property
+    def delta_x(self) -> float:
+        """
+        returns the delta x in the measurement model
+        """
+        return self.measured_odom.x
+
+    @property
+    def delta_y(self) -> float:
+        """
+        returns the delta y in the measurement model
+        """
+        return self.measured_odom.y
+
+    @property
+    def delta_theta(self) -> float:
+        """
+        returns the delta theta in the measurement model
+        """
+        return self.measured_odom.theta
+
+    @property
+    def translation_weight(self) -> float:
+        return 1 / self.covariance[0, 0]
+
+    @property
+    def rotation_weight(self) -> float:
+        return 1 / self.covariance[2, 2]

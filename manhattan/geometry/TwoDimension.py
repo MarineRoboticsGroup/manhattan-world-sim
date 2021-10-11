@@ -716,11 +716,11 @@ class SE2Pose(object):
         return np.array([self.x, self.y, self.theta])
 
     @property
-    def local_frame(self):
+    def local_frame(self) -> str:
         return self._local_frame
 
     @property
-    def base_frame(self):
+    def base_frame(self) -> str:
         return self._base_frame
 
     def log_map(self):
