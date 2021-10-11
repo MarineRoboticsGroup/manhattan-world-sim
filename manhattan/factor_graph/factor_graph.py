@@ -789,7 +789,7 @@ class FactorGraphData:
             del_x = pose_measure.x
             del_y = pose_measure.y
             del_theta = pose_measure.theta
-            line = f"{del_x:.15f} {del_y:.15f} {del_theta:.15f} "
+            line += f"{del_x:.15f} {del_y:.15f} {del_theta:.15f} "
 
             # add in covariance info (Sigma == covariance)
             line += "Sigma "

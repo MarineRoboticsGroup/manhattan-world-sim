@@ -151,6 +151,9 @@ class ManhattanSimulator:
             sim_params (SimulationParams): the simulation parameters to check
 
         """
+        if sim_params.groundtruth_measurements:
+            print("WARNING: groundtruth_measurements is set to True. ")
+
         # check input arguments for simulation parameters
 
         assert sim_params.num_robots > 0, "num_robots must be greater than 0"
@@ -242,7 +245,7 @@ class ManhattanSimulator:
         self._timestep = 0
 
         # bookkeeping for pose measurements
-        self._loop_closures: List[LoopClosure] = []
+        self._num_loop_closures = 0
         self._groundtruth_poses: List[List[SE2Pose]] = []
 
         # bookkeeping for range measurements
@@ -603,7 +606,7 @@ class ManhattanSimulator:
 
         # can definitely make this faster using numpy or something to
         # compute the distances between all pairs of poses
-        if len(self._loop_closures) >= self.sim_params.max_num_loop_closures:
+        if self._num_loop_closures >= self.sim_params.max_num_loop_closures:
             return
 
         for cur_robot_id in range(self.num_robots):
@@ -703,6 +706,8 @@ class ManhattanSimulator:
                     )
                     self._factor_graph.add_pose_measurement(measure)
 
+                self._num_loop_closures += 1
+
     def _get_incorrect_robot_to_robot_range_association(
         self, robot_1_idx: int, robot_2_idx: int
     ) -> Tuple[str, str]:
@@ -757,10 +762,10 @@ class ManhattanSimulator:
         assert 0 <= beacon_idx < self.num_beacons
 
         # robot will always be correct?
-        assoc_1 = self._robots[robot_idx].name
+        assoc_1 = self._robots[robot_idx].pose.local_frame
 
         # get all other robots
-        robot_options = [x.name for x in self._robots]
+        robot_options = [x.pose.local_frame for x in self._robots]
         robot_options.remove(assoc_1)
 
         # get all other beacons that have already been sensed
