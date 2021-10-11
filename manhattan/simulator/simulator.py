@@ -34,6 +34,8 @@ from manhattan.utils.attrib_utils import (
     positive_int_validator,
     positive_int_tuple_validator,
 )
+from manhattan.utils.name_utils import get_robot_char_from_number
+from manhattan.factor_graph.factor_graph import FactorGraphData
 
 
 @attr.s(frozen=True, auto_attribs=True)
@@ -272,7 +274,10 @@ class ManhattanSimulator:
             covariance=np.diag([loop_cov_x, loop_cov_y, loop_cov_theta]),
         )
 
-        # add these after everything else is initialized
+        # Add factor graph structure to hold data
+        self._factor_graph = FactorGraphData()
+
+        # * add these after everything else is initialized
         self.add_robots(sim_params.num_robots)
         self.add_beacons(sim_params.num_beacons)
 
@@ -334,6 +339,8 @@ class ManhattanSimulator:
 
         if format == "efg":
             self._save_data_as_efg_format(data_dir)
+        elif format == "efg_pickle":
+            self._save_data_as_efg_pickle_format(data_dir)
 
         else:
             raise NotImplementedError(f"Data format {format} is not supported.")
@@ -379,9 +386,10 @@ class ManhattanSimulator:
 
         # if no pose passed in, sample a random pose
         num_existing_robots = len(self._robots)
-        name = f"Robot {num_existing_robots}"
+        cur_robot_idx = num_existing_robots
+        robot_name = get_robot_char_from_number(cur_robot_idx)
         if start_pose is None:
-            frame_name = f"{name} time: 0"
+            frame_name = f"{robot_name}0"
             if num_existing_robots == 0:
                 start_pose = SE2Pose(
                     0.0,
@@ -408,13 +416,22 @@ class ManhattanSimulator:
             start_pose
         ), f"Robot pose {start_pose} is not feasible"
 
-        robot = Robot(name, start_pose, range_model, odom_model, loop_closure_model)
+        robot = Robot(
+            robot_name, start_pose, range_model, odom_model, loop_closure_model
+        )
         self._robots.append(robot)
 
         # add to lists to track measurements
         self._odom_measurements.append([])
         self._groundtruth_poses.append([])
         self._groundtruth_poses[-1].append(start_pose)
+        assert all(len(x) == 1 for x in self._groundtruth_poses), (
+            "Should only have starting poses when adding "
+            "robots to make sure robots aren't added after simulator iterations"
+        )
+
+        # update factor graph with new pose
+        self._factor_graph.add_pose_variable_from_SE2(robot.pose)
 
         # make sure lists are all correct sizes
         assert len(self._odom_measurements) == len(self._robots)
@@ -445,7 +462,7 @@ class ManhattanSimulator:
             position
         ), f"Beacon position {position} is not feasible"
 
-        name = f"Beacon {len(self._beacons)}"
+        name = f"L{len(self._beacons)}"
         beacon = Beacon(name, position, range_model)
         self._beacons.append(beacon)
 
@@ -461,6 +478,25 @@ class ManhattanSimulator:
             data_dir (str): the directory to save everything in
         """
         save_file = f"{data_dir}/factor_graph.fg"
+        save_to_efg_format(
+            save_file,
+            odom_measurements=self._odom_measurements,
+            loop_closures=self._loop_closures,
+            gt_poses=self._groundtruth_poses,
+            beacons=self._beacons,
+            range_measurements=self._range_measurements,
+            range_associations=self._range_associations,
+            gt_range_associations=self._groundtruth_range_associations,
+        )
+        print(f"Saved file to: {save_file}")
+
+    def _save_data_as_efg_pickle_format(self, data_dir: str) -> None:
+        """Saves the data in the Extended Factor Graph (EFG) format.
+
+        Args:
+            data_dir (str): the directory to save everything in
+        """
+        save_file = f"{data_dir}/factor_graph.fgpck"
         save_to_efg_format(
             save_file,
             odom_measurements=self._odom_measurements,
@@ -517,7 +553,7 @@ class ManhattanSimulator:
             move_pt_local = robot.pose.transform_base_point_to_local(move_pt)
 
             # frame name represents robot and timestep
-            move_frame_name = f"{robot.name} time: {robot.timestep+1}"
+            move_frame_name = f"{robot.name}{robot.timestep+1}"
 
             # represent the move as a pose
             move_transform = SE2Pose(
@@ -701,11 +737,11 @@ class ManhattanSimulator:
         assert robot_1_idx != robot_2_idx
 
         # first robot will always be correct?
-        assoc_1 = self._robots[robot_1_idx].name
+        assoc_1 = self._robots[robot_1_idx].pose.local_frame
 
         # get all other robots
-        true_other_assoc = self._robots[robot_2_idx].name
-        robot_options = [x.name for x in self._robots]
+        true_other_assoc = self._robots[robot_2_idx].pose.local_frame
+        robot_options = [x.pose.local_frame for x in self._robots]
         robot_options.remove(assoc_1)
         robot_options.remove(true_other_assoc)
 
@@ -788,8 +824,8 @@ class ManhattanSimulator:
 
         # fill in the measurement info
         true_association = (
-            self._robots[robot_1_idx].name,
-            self._robots[robot_2_idx].name,
+            self._robots[robot_1_idx].pose.local_frame,
+            self._robots[robot_2_idx].pose.local_frame,
         )
 
         # randomly sample to decide if this is an incorrect association
@@ -832,7 +868,7 @@ class ManhattanSimulator:
 
         # fill in the measurement info
         true_association = (
-            self._robots[robot_idx].name,
+            self._robots[robot_idx].pose.local_frame,
             self._beacons[beacon_idx].name,
         )
         self._sensed_beacons.add(self._beacons[beacon_idx])
