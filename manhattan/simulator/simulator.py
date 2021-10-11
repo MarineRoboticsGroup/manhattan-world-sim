@@ -26,7 +26,6 @@ from manhattan.noise_models.loop_closure_model import (
     LoopClosureModel,
     GaussianLoopClosureModel as GaussLoopClosureSensor,
 )
-from manhattan.simulator.save_file_utils import save_to_efg_format
 from manhattan.utils.sample_utils import choice
 from manhattan.utils.attrib_utils import (
     probability_validator,
@@ -34,7 +33,7 @@ from manhattan.utils.attrib_utils import (
     positive_int_validator,
     positive_int_tuple_validator,
 )
-from manhattan.utils.name_utils import get_robot_char_from_number
+from manhattan.factor_graph.name_utils import get_robot_char_from_number
 from manhattan.factor_graph.factor_graph import FactorGraphData
 
 
@@ -337,13 +336,8 @@ class ManhattanSimulator:
         with open(data_dir + "/params.json", "w") as f:
             json.dump(attr.asdict(self.sim_params), f)
 
-        if format == "efg":
-            self._save_data_as_efg_format(data_dir)
-        elif format == "efg_pickle":
-            self._save_data_as_efg_pickle_format(data_dir)
-
-        else:
-            raise NotImplementedError(f"Data format {format} is not supported.")
+        # save the simulation data to file
+        self._factor_graph.save_to_file(data_dir, format)
 
     def random_step(self) -> None:
         self._move_robots_randomly()
@@ -468,46 +462,6 @@ class ManhattanSimulator:
 
     def increment_timestep(self) -> None:
         self._timestep += 1
-
-    ##### Internal methods to save data #####
-
-    def _save_data_as_efg_format(self, data_dir: str) -> None:
-        """Saves the data in the Extended Factor Graph (EFG) format.
-
-        Args:
-            data_dir (str): the directory to save everything in
-        """
-        save_file = f"{data_dir}/factor_graph.fg"
-        save_to_efg_format(
-            save_file,
-            odom_measurements=self._odom_measurements,
-            loop_closures=self._loop_closures,
-            gt_poses=self._groundtruth_poses,
-            beacons=self._beacons,
-            range_measurements=self._range_measurements,
-            range_associations=self._range_associations,
-            gt_range_associations=self._groundtruth_range_associations,
-        )
-        print(f"Saved file to: {save_file}")
-
-    def _save_data_as_efg_pickle_format(self, data_dir: str) -> None:
-        """Saves the data in the Extended Factor Graph (EFG) format.
-
-        Args:
-            data_dir (str): the directory to save everything in
-        """
-        save_file = f"{data_dir}/factor_graph.fgpck"
-        save_to_efg_format(
-            save_file,
-            odom_measurements=self._odom_measurements,
-            loop_closures=self._loop_closures,
-            gt_poses=self._groundtruth_poses,
-            beacons=self._beacons,
-            range_measurements=self._range_measurements,
-            range_associations=self._range_associations,
-            gt_range_associations=self._groundtruth_range_associations,
-        )
-        print(f"Saved file to: {save_file}")
 
     ###### Internal methods to move robots ######
 
@@ -811,9 +765,7 @@ class ManhattanSimulator:
             measurement (RangeMeasurement): [description]
 
         """
-        assert isinstance(robot_1_idx, int)
         assert 0 <= robot_1_idx < self.num_robots
-        assert isinstance(robot_2_idx, int)
         assert 0 <= robot_2_idx < self.num_robots
         assert robot_1_idx < robot_2_idx
 
