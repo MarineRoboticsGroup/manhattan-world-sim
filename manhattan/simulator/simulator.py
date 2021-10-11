@@ -83,8 +83,10 @@ class SimulationParams:
             checks
         groundtruth_measurements (bool): whether to use ground truth as the
             measured values regardless of noise model
-        no_loop_pose_idx (List[int]): array of pose indices for which no loop closures will be generated
-        exclude_last_n_poses_for_loop_closure (int): default is 2; exclude last n poses from LC candidates
+        no_loop_pose_idx (List[int]): array of pose indices for which no loop
+            closures will be generated
+        exclude_last_n_poses_for_loop_closure (int): default is 2; exclude last
+            n poses from LC candidates
     """
 
     num_robots: int = attr.ib(default=1, validator=positive_int_validator)
@@ -150,6 +152,12 @@ class ManhattanSimulator:
         # grid_shape is tuple of positive integers
         assert len(sim_params.grid_shape) == 2
         assert all(0 < x for x in sim_params.grid_shape)
+
+        if sim_params.num_beacons > 0:
+            assert (
+                sim_params.y_steps_to_intersection > 1
+                and sim_params.x_steps_to_intersection > 1
+            ), "Need some space in grid to place beacons"
 
         # row and column spacing evenly fits into the grid shape
         assert sim_params.grid_shape[0] % sim_params.y_steps_to_intersection == 0
@@ -915,4 +923,6 @@ class ManhattanSimulator:
             self.ax.set_ylim(y_lb - 1, y_ub + 1)
 
     def close_plot(self):
-        self.fig.close()
+        plt.close()
+        self._robot_plot_objects.clear()
+        self._beacon_plot_objects.clear()

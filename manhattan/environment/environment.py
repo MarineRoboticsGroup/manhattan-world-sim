@@ -29,9 +29,10 @@ def _find_nearest(
 
     array = np.asarray(array)
     distances = np.abs(array - value)
-    idx = distances.argmin()
-    delta = value - array[idx]
-    return idx, delta, array[idx]
+    idx = int(distances.argmin())
+    arr_val = float(array[idx])
+    delta = value - arr_val
+    return idx, delta, arr_val
 
 
 class ManhattanWorld:
@@ -406,8 +407,7 @@ class ManhattanWorld:
             vert for vert in possible_verts if self.vertex_is_beacon_feasible(vert)
         ]
 
-        if len(feasible_verts) == 0:
-            return None
+        assert len(feasible_verts) > 0, "No feasible beacon positions"
 
         # randomly sample one of the vertices
         vert_sample = choice(feasible_verts)
