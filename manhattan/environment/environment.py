@@ -65,7 +65,6 @@ class ManhattanWorld:
             check_collision (bool, optional): [description]. Defaults to True.
             tol (float, optional): [description]. Defaults to 1e-5.
         """
-        assert isinstance(grid_vertices_shape, tuple)
         assert len(grid_vertices_shape) == 2
         self._num_x_pts, self._num_y_pts = grid_vertices_shape
 
@@ -76,16 +75,12 @@ class ManhattanWorld:
         self._y_steps_to_intersection = y_steps_to_intersection
         self._x_steps_to_intersection = x_steps_to_intersection
 
-        assert isinstance(cell_scale, float)
         self._scale = cell_scale
 
-        assert isinstance(check_collision, bool)
         self._check_collision = check_collision
 
-        assert isinstance(tol, float)
         self._tol = tol
 
-        assert isinstance(robot_area, list) or robot_area is None
         if robot_area is not None:
             assert self.check_vertex_list_valid(robot_area)
 
@@ -345,7 +340,6 @@ class ManhattanWorld:
         Returns:
             SE2Pose: a random, feasible robot pose
         """
-        assert isinstance(local_frame, str)
 
         feasible_x_vals = (self._min_x_coord_feasible < self._x_coords) & (
             self._x_coords < self._max_x_coord_feasible
@@ -390,7 +384,6 @@ class ManhattanWorld:
             Optional[Point2]: a random valid beacon point, None if no position
                 is feasible
         """
-        assert isinstance(frame, str)
 
         # * this is also somewhat naive but it works... could revisit this later
 
@@ -454,9 +447,7 @@ class ManhattanWorld:
         Returns:
             List[Tuple[int, int]]: list of vertices
         """
-        assert isinstance(coords, list)
         assert len(coords) >= 1
-        assert isinstance(coords[0], tuple)
         assert all(len(c) == 2 for c in coords)
 
         nearest_vertices = [self.coordinate2vertex(*c) for c in coords]
@@ -515,7 +506,6 @@ class ManhattanWorld:
         Returns:
             Tuple[int, int]: (i, j) vertex
         """
-        assert isinstance(point, Point2)
         assert point.frame == "world"
 
         x, y = point.x, point.y
@@ -534,7 +524,6 @@ class ManhattanWorld:
         Returns:
             bool: True if the robot is feasible at that pose, False otherwise
         """
-        assert isinstance(pose, SE2Pose), f"pose: {pose}, type: {type(pose)}"
 
         rotation_is_good = abs(pose.theta % (np.pi / 2.0)) < self._tol
         if not rotation_is_good:
@@ -558,7 +547,6 @@ class ManhattanWorld:
         Returns:
             bool: True if the position is feasible for a beacon, False otherwise
         """
-        assert isinstance(position, Point2)
 
         vert = self.coordinate2vertex(position.x, position.y)
         return self.vertex_is_beacon_feasible(vert)
@@ -604,9 +592,7 @@ class ManhattanWorld:
             return False
 
     def vertex_is_in_bounds(self, vert: Tuple[int, int]) -> bool:
-        assert isinstance(vert, tuple)
         assert len(vert) == 2
-        assert all(isinstance(x, np.integer) for x in vert)
 
         x_in_bounds = 0 <= vert[0] < self._num_x_pts
         y_in_bounds = 0 <= vert[1] < self._num_y_pts
@@ -621,11 +607,7 @@ class ManhattanWorld:
         Returns:
             bool: True if the vertex is valid, False otherwise
         """
-        assert isinstance(vert, tuple)
         assert len(vert) == 2, f"vert: {vert}, len: {len(vert)}"
-        assert all(
-            isinstance(i, np.integer) for i in vert
-        ), f"vert: {vert}, type1: {type(vert[0])}, type2: {type(vert[1])}"
         assert 0 <= vert[0] < self._num_x_pts
         assert 0 <= vert[1] < self._num_y_pts
         return True
