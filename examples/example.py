@@ -8,7 +8,7 @@ from manhattan.simulator.simulator import ManhattanSimulator, SimulationParams
 
 import numpy as np
 
-for num_timesteps in [10, 100, 1000, 10000]:
+for num_timesteps in [10, 100]:
     for pos_stddev in [1e-2, 1e-1]:
         for theta_stddev in [1e-3, 1e-2]:
             for dist_stddev in [1e-1, 1]:
@@ -64,4 +64,3 @@ for num_timesteps in [10, 100, 1000, 10000]:
                                 )
                             )
                             sim.save_simulation_data(data_dir, format="pickle")
-                            # sim.save_simulation_data(data_dir, format="efg")

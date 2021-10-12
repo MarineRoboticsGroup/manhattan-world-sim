@@ -33,8 +33,8 @@ from manhattan.utils.attrib_utils import (
     positive_int_validator,
     positive_int_tuple_validator,
 )
-from manhattan.factor_graph.name_utils import get_robot_char_from_number
-from manhattan.factor_graph.factor_graph import (
+from factor_graph.utils.name_utils import get_robot_char_from_number
+from factor_graph.factor_graph import (
     FactorGraphData,
     LandmarkVariable,
     PoseVariable,
@@ -324,7 +324,7 @@ class ManhattanSimulator:
 
     ###### Simulation interface methods ######
 
-    def save_simulation_data(self, data_dir: str, format: str = "efg") -> None:
+    def save_simulation_data(self, data_dir: str, format: str = "fg") -> None:
         """Saves the simulation data to a file with a given format.
 
         Args:
@@ -339,7 +339,8 @@ class ManhattanSimulator:
             json.dump(attr.asdict(self.sim_params), f)
 
         # save the simulation data to file
-        self._factor_graph.save_to_file(data_dir, format)
+        filepath = join(data_dir, f"factor_graph.{format}")
+        self._factor_graph.save_to_file(filepath)
 
     def random_step(self) -> None:
         self._move_robots_randomly()
@@ -557,7 +558,7 @@ class ManhattanSimulator:
             measurement.translation_weight,
             measurement.rotation_weight,
         )
-        self._factor_graph.add_pose_measurement(pose_measure)
+        self._factor_graph.add_odom_measurement(robot_idx, pose_measure)
 
         # store the groundtruth pose as well (for loop closures)
         self._groundtruth_poses[robot_idx].append(robot.pose)
@@ -704,7 +705,7 @@ class ManhattanSimulator:
                         loop_closure.translation_weight,
                         loop_closure.rotation_weight,
                     )
-                    self._factor_graph.add_pose_measurement(measure)
+                    self._factor_graph.add_loop_closure(measure)
 
                 self._num_loop_closures += 1
 
