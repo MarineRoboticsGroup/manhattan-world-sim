@@ -429,7 +429,7 @@ class ManhattanSimulator:
         pose_loc = (start_pose.x, start_pose.y)
         pose_theta = start_pose.theta
         self._factor_graph.add_pose_variable(
-            PoseVariable(robot_name, pose_loc, pose_theta)
+            PoseVariable(start_pose.local_frame, pose_loc, pose_theta)
         )
 
         # if first robot, add prior to pin
@@ -527,11 +527,17 @@ class ManhattanSimulator:
                 base_frame=robot.pose.local_frame,
             )
 
-            # move the robot and store the measurement
+            # move the robot and store the measurement and new pose
             odom_measurement = robot.move(
                 move_transform, self.sim_params.groundtruth_measurements
             )
             self._store_odometry_measurement(robot_idx, odom_measurement)
+            cur_pose = robot.pose
+            self._factor_graph.add_pose_variable(
+                PoseVariable(
+                    cur_pose.local_frame, (cur_pose.x, cur_pose.y), cur_pose.theta
+                )
+            )
 
             # make sure nothing weird happened with the timesteps
             assert self.timestep == robot.timestep
