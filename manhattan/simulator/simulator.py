@@ -33,8 +33,8 @@ from manhattan.utils.attrib_utils import (
     positive_int_validator,
     positive_int_tuple_validator,
 )
-from factor_graph.utils.name_utils import get_robot_char_from_number
-from factor_graph.factor_graph import (
+from py_factor_graph.utils.name_utils import get_robot_char_from_number
+from py_factor_graph.factor_graph import (
     FactorGraphData,
     LandmarkVariable,
     PoseVariable,
@@ -584,12 +584,13 @@ class ManhattanSimulator:
                 dist = cur_robot.distance_to_other_agent(other_robot)
 
                 if dist < self.sim_params.range_sensing_radius:
-                    measure = cur_robot.range_measurement_from_dist(
-                        dist, self.sim_params.groundtruth_measurements
-                    )
-                    self._add_robot_to_robot_range_measurement(
-                        cur_robot_id, other_robot_id, measure
-                    )
+                    if np.random.random() < self.sim_params.range_sensing_prob:
+                        measure = cur_robot.range_measurement_from_dist(
+                            dist, self.sim_params.groundtruth_measurements
+                        )
+                        self._add_robot_to_robot_range_measurement(
+                            cur_robot_id, other_robot_id, measure
+                        )
 
             # get all ranging to beacons
             for beacon_id in range(self.num_beacons):
@@ -600,10 +601,11 @@ class ManhattanSimulator:
                 dist = cur_robot.distance_to_other_agent(beacon)
 
                 if dist < self.sim_params.range_sensing_radius:
-                    measure = cur_robot.range_measurement_from_dist(dist)
-                    self._add_robot_to_beacon_range_measurement(
-                        cur_robot_id, beacon_id, measure
-                    )
+                    if np.random.random() < self.sim_params.range_sensing_prob:
+                        measure = cur_robot.range_measurement_from_dist(dist)
+                        self._add_robot_to_beacon_range_measurement(
+                            cur_robot_id, beacon_id, measure
+                        )
 
     def _update_loop_closures(self) -> None:
         """Possibly add loop closures for each robot.
