@@ -18,7 +18,7 @@ for num_timesteps in [5000]:
                             print()
                             for i in range(0, 1):
                                 sim_args = SimulationParams(
-                                    num_robots=1,
+                                    num_robots=3,
                                     num_beacons=num_beacons,
                                     grid_shape=(grid_len, grid_len),
                                     y_steps_to_intersection=2,
@@ -47,8 +47,13 @@ for num_timesteps in [5000]:
                                 )
                                 sim = ManhattanSimulator(sim_args)
 
+                                sim.plot_grid()
+                                sim.plot_beacons()
+
                                 for _ in range(num_timesteps):
                                     sim.random_step()
+                                    sim.plot_robot_states()
+                                    sim.show_plot(animation=True)
                                 sim.close_plot()
 
                                 data_dir = expanduser(
