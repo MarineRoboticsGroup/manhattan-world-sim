@@ -341,6 +341,13 @@ class ManhattanSimulator:
         # save the simulation data to file
         filepath = join(data_dir, f"factor_graph.{format}")
         self._factor_graph.save_to_file(filepath)
+
+    def animate_odometry(self, show_gt: bool = False) -> None:
+        """Visualizes the odometry data for the simulation.
+
+        Args:
+            show_gt (bool, optional): whether to show the ground truth. Defaults to False.
+        """
         self._factor_graph.animate_odometry(show_gt=True, pause=0.01)
 
     def random_step(self) -> None:
@@ -584,6 +591,11 @@ class ManhattanSimulator:
 
                 # get distance between robot and other_robot
                 dist = cur_robot.distance_to_other_agent(other_robot)
+
+                # TODO fix bug so that robots do not end up in same location and
+                # do not have zero distances
+                if dist < 1e-2:
+                    continue
 
                 if dist < self.sim_params.range_sensing_radius:
                     if np.random.random() < self.sim_params.range_sensing_prob:

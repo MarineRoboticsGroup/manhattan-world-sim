@@ -228,8 +228,8 @@ class Point2(object):
             return False
         if isinstance(other, Point2):
             return (
-                abs(self.x - other.x) < 1e-8
-                and abs(self.y - other.y) < 1e-8
+                abs(self.x - other.x) < 1e-4
+                and abs(self.y - other.y) < 1e-4
                 and self.frame == other.frame
             )
 

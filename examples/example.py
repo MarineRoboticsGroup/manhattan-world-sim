@@ -8,7 +8,9 @@ from manhattan.simulator.simulator import ManhattanSimulator, SimulationParams
 
 import numpy as np
 
-for num_timesteps in [5000]:
+show_animation = False
+
+for num_timesteps in [500]:
     for pos_stddev in [1e-1]:
         for theta_stddev in [1e-2]:
             for dist_stddev in [1e-3]:
@@ -47,14 +49,19 @@ for num_timesteps in [5000]:
                                 )
                                 sim = ManhattanSimulator(sim_args)
 
-                                sim.plot_grid()
-                                sim.plot_beacons()
+                                if show_animation:
+                                    sim.plot_grid()
+                                    sim.plot_beacons()
 
                                 for _ in range(num_timesteps):
                                     sim.random_step()
-                                    sim.plot_robot_states()
-                                    sim.show_plot(animation=True)
-                                sim.close_plot()
+
+                                    if show_animation:
+                                        sim.plot_robot_states()
+                                        sim.show_plot(animation=True)
+
+                                if show_animation:
+                                    sim.close_plot()
 
                                 data_dir = expanduser(
                                     join(
