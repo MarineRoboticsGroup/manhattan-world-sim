@@ -341,6 +341,7 @@ class ManhattanSimulator:
         # save the simulation data to file
         filepath = join(data_dir, f"factor_graph.{format}")
         self._factor_graph.save_to_file(filepath)
+        self._factor_graph.animate_odometry(show_gt=True, pause=0.01)
 
     def random_step(self) -> None:
         self._move_robots_randomly()
@@ -531,13 +532,14 @@ class ManhattanSimulator:
             odom_measurement = robot.move(
                 move_transform, self.sim_params.groundtruth_measurements
             )
-            self._store_odometry_measurement(robot_idx, odom_measurement)
+
             cur_pose = robot.pose
             self._factor_graph.add_pose_variable(
                 PoseVariable(
                     cur_pose.local_frame, (cur_pose.x, cur_pose.y), cur_pose.theta
                 )
             )
+            self._store_odometry_measurement(robot_idx, odom_measurement)
 
             # make sure nothing weird happened with the timesteps
             assert self.timestep == robot.timestep

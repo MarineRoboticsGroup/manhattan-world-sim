@@ -8,11 +8,11 @@ from manhattan.simulator.simulator import ManhattanSimulator, SimulationParams
 
 import numpy as np
 
-for num_timesteps in [50]:
+for num_timesteps in [5000]:
     for pos_stddev in [1e-1]:
         for theta_stddev in [1e-2]:
             for dist_stddev in [1e-3]:
-                for num_beacons in [1, 3]:
+                for num_beacons in [1]:
                     for loop_prob in [0.05]:
                         for grid_len in [10]:
                             print()
