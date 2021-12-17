@@ -1,6 +1,5 @@
 import numpy as np
 from typing import Callable
-from types import FunctionType
 
 from manhattan.measurement.range_measurement import RangeMeasurement
 
@@ -67,9 +66,12 @@ class ConstantGaussianRangeNoiseModel(RangeNoiseModel):
         self._stddev = stddev
 
         def measurement_model(true_dist: float, timestamp: int) -> RangeMeasurement:
+            measure = true_dist + np.random.normal(self._mean, self._stddev)
+            if measure < 0:
+                measure = 0.0
             return RangeMeasurement(
                 true_dist,
-                true_dist + np.random.normal(mean, stddev),
+                measure,
                 mean,
                 stddev,
                 timestamp,

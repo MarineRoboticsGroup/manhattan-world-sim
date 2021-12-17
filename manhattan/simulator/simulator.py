@@ -336,7 +336,7 @@ class ManhattanSimulator:
 
         # save a .json with all of the simulation parameters
         with open(data_dir + "/params.json", "w") as f:
-            json.dump(attr.asdict(self.sim_params), f,indent=4)
+            json.dump(attr.asdict(self.sim_params), f, indent=4)
 
         # save the simulation data to file
         filepath = join(data_dir, f"factor_graph.{format}")
