@@ -34,16 +34,15 @@ from manhattan.utils.attrib_utils import (
     positive_int_tuple_validator,
 )
 from py_factor_graph.utils.name_utils import get_robot_char_from_number
-from py_factor_graph.factor_graph import (
-    FactorGraphData,
-    LandmarkVariable,
-    PoseVariable,
+from py_factor_graph.factor_graph import FactorGraphData
+from py_factor_graph.variables import PoseVariable, LandmarkVariable
+from py_factor_graph.measurements import (
     PoseMeasurement,
-    AmbiguousPoseMeasurement,
-    PosePrior,
     FGRangeMeasurement,
+    AmbiguousPoseMeasurement,
     AmbiguousFGRangeMeasurement,
 )
+from py_factor_graph.priors import PosePrior, LandmarkPrior
 
 
 @attr.s(frozen=True, auto_attribs=True)
@@ -258,18 +257,18 @@ class ManhattanSimulator:
         )
 
         # odometry measurements
-        odom_cov_x = self._sim_params.odom_x_stddev ** 2
-        odom_cov_y = self._sim_params.odom_y_stddev ** 2
-        odom_cov_theta = self._sim_params.odom_theta_stddev ** 2
+        odom_cov_x = self._sim_params.odom_x_stddev**2
+        odom_cov_y = self._sim_params.odom_y_stddev**2
+        odom_cov_theta = self._sim_params.odom_theta_stddev**2
         self._base_odometry_model = GaussOdomSensor(
             mean=np.zeros(3),
             covariance=np.diag([odom_cov_x, odom_cov_y, odom_cov_theta]),
         )
 
         # loop closures
-        loop_cov_x = self._sim_params.loop_x_stddev ** 2
-        loop_cov_y = self._sim_params.loop_y_stddev ** 2
-        loop_cov_theta = self._sim_params.loop_theta_stddev ** 2
+        loop_cov_x = self._sim_params.loop_x_stddev**2
+        loop_cov_y = self._sim_params.loop_y_stddev**2
+        loop_cov_theta = self._sim_params.loop_theta_stddev**2
         self._base_loop_closure_model = GaussLoopClosureSensor(
             mean=np.zeros(3),
             covariance=np.diag([loop_cov_x, loop_cov_y, loop_cov_theta]),
