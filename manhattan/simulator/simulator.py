@@ -569,8 +569,8 @@ class ManhattanSimulator:
             measurement.delta_x,
             measurement.delta_y,
             measurement.delta_theta,
-            measurement.translation_weight,
-            measurement.rotation_weight,
+            measurement.translation_precision,
+            measurement.rotation_precision,
         )
         self._factor_graph.add_odom_measurement(robot_idx, pose_measure)
 
@@ -701,8 +701,8 @@ class ManhattanSimulator:
                         x=loop_closure.delta_x,
                         y=loop_closure.delta_y,
                         theta=loop_closure.delta_theta,
-                        translation_weight=loop_closure.translation_weight,
-                        rotation_weight=loop_closure.rotation_weight,
+                        translation_precision=loop_closure.translation_precision,
+                        rotation_precision=loop_closure.rotation_precision,
                     )
                     self._factor_graph.add_ambiguous_pose_measurement(
                         ambiguous_loop_closure
@@ -723,8 +723,8 @@ class ManhattanSimulator:
                         loop_closure.delta_x,
                         loop_closure.delta_y,
                         loop_closure.delta_theta,
-                        loop_closure.translation_weight,
-                        loop_closure.rotation_weight,
+                        loop_closure.translation_precision,
+                        loop_closure.rotation_precision,
                     )
                     self._factor_graph.add_loop_closure(measure)
 

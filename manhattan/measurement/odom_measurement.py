@@ -91,9 +91,9 @@ class OdomMeasurement:
         return self.measured_odom.theta
 
     @property
-    def translation_weight(self) -> float:
+    def translation_precision(self) -> float:
         return 1 / self.covariance[0, 0]
 
     @property
-    def rotation_weight(self) -> float:
+    def rotation_precision(self) -> float:
         return 1 / self.covariance[2, 2]
