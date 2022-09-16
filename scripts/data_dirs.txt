@@ -1,0 +1,7 @@
+/home/alan/data/manhattan/400_timesteps/10_pos_stddev/2_rot_stddev/50_range_prob/0_beacons/30_grid/seed_9999
+/home/alan/data/manhattan/400_timesteps/10_pos_stddev/2_rot_stddev/50_range_prob/0_beacons/30_grid/seed_19998
+/home/alan/data/manhattan/400_timesteps/10_pos_stddev/2_rot_stddev/50_range_prob/0_beacons/30_grid/seed_29997
+/home/alan/data/manhattan/400_timesteps/10_pos_stddev/2_rot_stddev/50_range_prob/0_beacons/30_grid/seed_39996
+/home/alan/data/manhattan/400_timesteps/10_pos_stddev/2_rot_stddev/50_range_prob/0_beacons/30_grid/seed_49995
+/home/alan/data/manhattan/400_timesteps/10_pos_stddev/2_rot_stddev/50_range_prob/0_beacons/30_grid/seed_59994
+/home/alan/data/manhattan/400_timesteps/10_pos_stddev/2_rot_stddev/50_range_prob/0_beacons/30_grid/seed_69993
