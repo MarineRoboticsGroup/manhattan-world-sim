@@ -35,7 +35,7 @@ from manhattan.utils.attrib_utils import (
 )
 from py_factor_graph.utils.name_utils import get_robot_char_from_number
 from py_factor_graph.factor_graph import FactorGraphData
-from py_factor_graph.variables import PoseVariable, LandmarkVariable
+from py_factor_graph.variables import PoseVariable2D, LandmarkVariable3D
 from py_factor_graph.measurements import (
     PoseMeasurement,
     FGRangeMeasurement,
@@ -436,7 +436,7 @@ class ManhattanSimulator:
         pose_loc = (start_pose.x, start_pose.y)
         pose_theta = start_pose.theta
         self._factor_graph.add_pose_variable(
-            PoseVariable(start_pose.local_frame, pose_loc, pose_theta)
+            PoseVariable2D(start_pose.local_frame, pose_loc, pose_theta)
         )
 
         # if first robot, add prior to pin
@@ -473,7 +473,7 @@ class ManhattanSimulator:
         beacon = Beacon(name, position, range_model)
         self._beacons.append(beacon)
         self._factor_graph.add_landmark_variable(
-            LandmarkVariable(name, (position.x, position.y))
+            LandmarkVariable3D(name, (position.x, position.y))
         )
 
     def increment_timestep(self) -> None:
@@ -541,7 +541,7 @@ class ManhattanSimulator:
 
             cur_pose = robot.pose
             self._factor_graph.add_pose_variable(
-                PoseVariable(
+                PoseVariable2D(
                     cur_pose.local_frame, (cur_pose.x, cur_pose.y), cur_pose.theta
                 )
             )

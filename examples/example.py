@@ -10,17 +10,17 @@ import numpy as np
 
 show_animation = False
 
-for num_timesteps in [700]:
+for num_timesteps in [400]:
     for pos_stddev in [1e-2]:
         for theta_stddev in [1e-3]:
             for dist_stddev in [5e-1]:
-                for num_beacons in [1]:
-                    for range_prob in [0.6]:
+                for num_beacons in [0]:
+                    for range_prob in [0.5]:
                         for grid_len in [50]:
                             print()
-                            for i in range(0, 1):
+                            for i in range(0, 20):
                                 sim_args = SimulationParams(
-                                    num_robots=6,
+                                    num_robots=4,
                                     num_beacons=num_beacons,
                                     grid_shape=(grid_len, grid_len),
                                     y_steps_to_intersection=2,
