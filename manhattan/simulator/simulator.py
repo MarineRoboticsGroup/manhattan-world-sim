@@ -37,9 +37,9 @@ from py_factor_graph.utils.name_utils import get_robot_char_from_number
 from py_factor_graph.factor_graph import FactorGraphData
 from py_factor_graph.variables import PoseVariable2D, LandmarkVariable3D
 from py_factor_graph.measurements import (
-    PoseMeasurement,
+    PoseMeasurement2D,
     FGRangeMeasurement,
-    AmbiguousPoseMeasurement,
+    AmbiguousPoseMeasurement2D,
     AmbiguousFGRangeMeasurement,
 )
 from py_factor_graph.priors import PosePrior, LandmarkPrior
@@ -275,7 +275,7 @@ class ManhattanSimulator:
         )
 
         # Add factor graph structure to hold data
-        self._factor_graph = FactorGraphData()
+        self._factor_graph = FactorGraphData(dimension=2)
 
         # * add these after everything else is initialized
         self.add_robots(sim_params.num_robots)
@@ -563,7 +563,7 @@ class ManhattanSimulator:
         """
         robot = self._robots[robot_idx]
 
-        pose_measure = PoseMeasurement(
+        pose_measure = PoseMeasurement2D(
             measurement.base_frame,
             measurement.local_frame,
             measurement.delta_x,
@@ -694,7 +694,7 @@ class ManhattanSimulator:
                     )
 
                     # fill in the incorrect loop closure in factor graph
-                    ambiguous_loop_closure = AmbiguousPoseMeasurement(
+                    ambiguous_loop_closure = AmbiguousPoseMeasurement2D(
                         base_pose=loop_closure.base_frame,
                         measured_to_pose=false_loop_closure_pose.local_frame,
                         true_to_pose=true_loop_closure_pose.local_frame,
@@ -717,7 +717,7 @@ class ManhattanSimulator:
                     )
 
                     # fill in loop closure in factor graph
-                    measure = PoseMeasurement(
+                    measure = PoseMeasurement2D(
                         loop_closure.base_frame,
                         loop_closure.local_frame,
                         loop_closure.delta_x,
