@@ -6,6 +6,21 @@ sys.path.insert(0, os.path.abspath(".."))
 
 from manhattan.simulator.simulator import ManhattanSimulator, SimulationParams
 
+import logging, coloredlogs
+
+logger = logging.getLogger(__name__)
+field_styles = {
+    "filename": {"color": "green"},
+    "filename": {"color": "green"},
+    "levelname": {"bold": True, "color": "black"},
+    "name": {"color": "blue"},
+}
+coloredlogs.install(
+    level="INFO",
+    fmt="[%(filename)s:%(lineno)d] %(name)s %(levelname)s - %(message)s",
+    field_styles=field_styles,
+)
+
 import numpy as np
 
 show_animation = False
@@ -79,9 +94,11 @@ for num_timesteps in [400]:
                                     )
                                 )
                                 sim.save_simulation_data(data_dir, format="pickle")
-                                print(f"Saved data to {data_dir}")
                                 data_dirs.append(data_dir)
 
-with open("data_dirs.txt", "w") as f:
+# get the directory of this file
+run_sims_dir = os.path.dirname(os.path.realpath(__file__))
+data_dirs_record_file = os.path.join(run_sims_dir, "data_dirs.txt")
+with open(data_dirs_record_file, "w") as f:
     for data_dir in data_dirs:
         f.write(f"{data_dir}\n")

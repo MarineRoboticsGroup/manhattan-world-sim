@@ -1,4 +1,3 @@
-from __future__ import annotations
 import numpy as np
 import math
 from typing import List, Tuple, Union, Optional, overload
@@ -336,7 +335,7 @@ class Rot2(object):
         return cls(vector[0], local_frame, base_frame)
 
     @staticmethod
-    def dist(x1: Rot2, x2: Rot2):
+    def dist(x1: "Rot2", x2: "Rot2"):
         """chordal distance between x1 and x2 which are np.ndarray forms of Rot2"""
         return np.linalg.norm((x1.inverse() * x2).log_map())
 
@@ -456,14 +455,14 @@ class Rot2(object):
         return self.inverse() * base_frame_pt
 
     @overload
-    def __mul__(self, other: Rot2) -> Rot2:
+    def __mul__(self, other: "Rot2") -> "Rot2":
         pass
 
     @overload
     def __mul__(self, other: Point2) -> Point2:
         pass
 
-    def __mul__(self, other: Union[Rot2, Point2]) -> Union[Rot2, Point2]:
+    def __mul__(self, other: Union["Rot2", Point2]) -> Union["Rot2", Point2]:
         """Rotates a point or rotation by this rotation
 
         Args:
@@ -487,7 +486,7 @@ class Rot2(object):
         raise ValueError("Not a Point2 or Rot2 type to multiply.")
 
     @overload
-    def __imul__(self, other: Rot2) -> Rot2:
+    def __imul__(self, other: "Rot2") -> "Rot2":
         pass
 
     @overload
@@ -495,8 +494,8 @@ class Rot2(object):
         pass
 
     def __imul__(  # type: ignore
-        self, other: Union[Rot2, Point2]
-    ) -> Union[Rot2, Point2]:
+        self, other: Union["Rot2", Point2]
+    ) -> Union["Rot2", Point2]:
         if isinstance(other, Rot2):
             assert self.local_frame == other.base_frame
             self._theta += other.theta
@@ -531,7 +530,7 @@ class Rot2(object):
             return same_frames and angle_similar
 
     def __hash__(self) -> int:
-        return hash(
+        return hash(  # type: ignore
             str(self.theta), (self.base_frame), (self.local_frame)
         )  # type: ignore
 

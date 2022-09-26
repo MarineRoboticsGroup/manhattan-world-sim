@@ -1,4 +1,3 @@
-from __future__ import annotations
 from abc import abstractmethod
 import matplotlib.pyplot as plt  # type: ignore
 import numpy as np
@@ -26,7 +25,7 @@ class Agent:
         self._range_model = range_model
         self._timestep = 0
 
-    def get_range_measurement_to_agent(self, other_agent: Agent) -> RangeMeasurement:
+    def get_range_measurement_to_agent(self, other_agent: "Agent") -> RangeMeasurement:
         other_loc = other_agent.position
         assert isinstance(other_loc, Point2)
         cur_loc = self.position
@@ -55,7 +54,7 @@ class Agent:
     def plot(self) -> None:
         pass
 
-    def distance_to_other_agent(self, other_agent: Agent) -> float:
+    def distance_to_other_agent(self, other_agent: "Agent") -> float:
         """Returns the distance between this agent and the other agent
 
         Args:
