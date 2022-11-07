@@ -6,6 +6,19 @@ from os.path import isdir, isfile, join
 from os import mkdir, makedirs
 import json
 import attr
+import logging, coloredlogs
+
+logger = logging.getLogger(__name__)
+field_styles = {
+    "filename": {"color": "green"},
+    "levelname": {"bold": True, "color": "black"},
+    "name": {"color": "blue"},
+}
+coloredlogs.install(
+    level="INFO",
+    fmt="[%(filename)s:%(lineno)d] %(name)s %(levelname)s - %(message)s",
+    field_styles=field_styles,
+)
 
 from manhattan.environment.environment import ManhattanWorld
 from manhattan.agent.agent import Robot, Beacon
@@ -35,7 +48,7 @@ from manhattan.utils.attrib_utils import (
 )
 from py_factor_graph.utils.name_utils import get_robot_char_from_number
 from py_factor_graph.factor_graph import FactorGraphData
-from py_factor_graph.variables import PoseVariable2D, LandmarkVariable3D
+from py_factor_graph.variables import PoseVariable2D, LandmarkVariable2D
 from py_factor_graph.measurements import (
     PoseMeasurement2D,
     FGRangeMeasurement,
@@ -231,6 +244,9 @@ class ManhattanSimulator:
         self.check_simulation_params(sim_params)
         np.random.seed(sim_params.seed_num)
 
+        if sim_params.groundtruth_measurements:
+            logger.warning("Groundtruth measurements are enabled.")
+
         self._env = ManhattanWorld(
             grid_vertices_shape=sim_params.grid_shape,
             y_steps_to_intersection=sim_params.y_steps_to_intersection,
@@ -257,18 +273,18 @@ class ManhattanSimulator:
         )
 
         # odometry measurements
-        odom_cov_x = self._sim_params.odom_x_stddev**2
-        odom_cov_y = self._sim_params.odom_y_stddev**2
-        odom_cov_theta = self._sim_params.odom_theta_stddev**2
+        odom_cov_x = self._sim_params.odom_x_stddev ** 2
+        odom_cov_y = self._sim_params.odom_y_stddev ** 2
+        odom_cov_theta = self._sim_params.odom_theta_stddev ** 2
         self._base_odometry_model = GaussOdomSensor(
             mean=np.zeros(3),
             covariance=np.diag([odom_cov_x, odom_cov_y, odom_cov_theta]),
         )
 
         # loop closures
-        loop_cov_x = self._sim_params.loop_x_stddev**2
-        loop_cov_y = self._sim_params.loop_y_stddev**2
-        loop_cov_theta = self._sim_params.loop_theta_stddev**2
+        loop_cov_x = self._sim_params.loop_x_stddev ** 2
+        loop_cov_y = self._sim_params.loop_y_stddev ** 2
+        loop_cov_theta = self._sim_params.loop_theta_stddev ** 2
         self._base_loop_closure_model = GaussLoopClosureSensor(
             mean=np.zeros(3),
             covariance=np.diag([loop_cov_x, loop_cov_y, loop_cov_theta]),
@@ -473,7 +489,7 @@ class ManhattanSimulator:
         beacon = Beacon(name, position, range_model)
         self._beacons.append(beacon)
         self._factor_graph.add_landmark_variable(
-            LandmarkVariable3D(name, (position.x, position.y))
+            LandmarkVariable2D(name, (position.x, position.y))
         )
 
     def increment_timestep(self) -> None:
