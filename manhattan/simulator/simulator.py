@@ -457,8 +457,15 @@ class ManhattanSimulator:
 
         # if first robot, add prior to pin
         if num_existing_robots == 0:
-            prior = np.eye(3) / 10
-            pose_prior = PosePrior(start_pose.local_frame, pose_loc, pose_theta, prior)
+            translation_precision = 100.0
+            rotation_precision = 1000.0
+            pose_prior = PosePrior(
+                start_pose.local_frame,
+                pose_loc,
+                pose_theta,
+                translation_precision,
+                rotation_precision,
+            )
             self._factor_graph.add_pose_prior(pose_prior)
 
     def add_beacon(
