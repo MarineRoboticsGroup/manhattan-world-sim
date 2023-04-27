@@ -26,15 +26,16 @@ import numpy as np
 show_animation = False
 data_dirs = []
 
-for num_timesteps in [400]:
+# 100, 200, 300, ..., 10000
+for num_timesteps in range(399, 401, 100):
     for pos_stddev in [1e-2]:
         for theta_stddev in [2e-3]:
             for dist_stddev in [1.0]:
-                for num_beacons in [0]:
-                    for range_prob in [0.5]:
-                        for grid_len in [30]:
+                for num_beacons in [6]:
+                    for range_prob in [0.1]:
+                        for grid_len in [20]:
                             print()
-                            for i in range(0, 7):
+                            for i in range(0, 1):
                                 sim_args = SimulationParams(
                                     num_robots=4,
                                     num_beacons=num_beacons,
@@ -84,6 +85,8 @@ for num_timesteps in [400]:
                                         "~",
                                         "data",
                                         "manhattan",
+                                        "score",
+                                        "runtimes",
                                         f"{num_timesteps}_timesteps",
                                         f"{int(pos_stddev*1000)}_pos_stddev",
                                         f"{int(theta_stddev*1000)}_rot_stddev",

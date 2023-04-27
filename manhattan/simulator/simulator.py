@@ -55,7 +55,7 @@ from py_factor_graph.measurements import (
     AmbiguousPoseMeasurement2D,
     AmbiguousFGRangeMeasurement,
 )
-from py_factor_graph.priors import PosePrior, LandmarkPrior
+from py_factor_graph.priors import PosePrior2D, LandmarkPrior2D
 
 
 @attr.s(frozen=True, auto_attribs=True)
@@ -308,6 +308,10 @@ class ManhattanSimulator:
         self.ax.set_xlim(x_lb - 1, x_ub + 1)
         self.ax.set_ylim(y_lb - 1, y_ub + 1)
 
+    # make a destructor to close the plot
+    def __del__(self) -> None:
+        plt.close(self.fig)
+
     def __str__(self):
         line = "Simulator Environment\n"
         line += f"Sim Params: {self.sim_params}\n"
@@ -339,12 +343,17 @@ class ManhattanSimulator:
 
     ###### Simulation interface methods ######
 
-    def save_simulation_data(self, data_dir: str, format: str = "fg") -> None:
+    def save_simulation_data(
+        self, data_dir: str, format: str = "fg", filename: str = "factor_graph"
+    ) -> str:
         """Saves the simulation data to a file with a given format.
 
         Args:
             data_dir (str): where to save the data to
             format (str, optional): the format of the data. Defaults to "efg".
+
+        Returns:
+            (str): the filepath
         """
         if not isdir(data_dir):
             makedirs(data_dir)
@@ -354,8 +363,10 @@ class ManhattanSimulator:
             json.dump(attr.asdict(self.sim_params), f, indent=4)
 
         # save the simulation data to file
-        filepath = join(data_dir, f"factor_graph.{format}")
+        filepath = join(data_dir, f"{filename}.{format}")
         self._factor_graph.save_to_file(filepath)
+
+        return filepath
 
     def animate_odometry(self, show_gt: bool = False) -> None:
         """Visualizes the odometry data for the simulation.
@@ -459,7 +470,7 @@ class ManhattanSimulator:
         if num_existing_robots == 0:
             translation_precision = 100.0
             rotation_precision = 1000.0
-            pose_prior = PosePrior(
+            pose_prior = PosePrior2D(
                 start_pose.local_frame,
                 pose_loc,
                 pose_theta,
