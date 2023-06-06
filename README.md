@@ -13,7 +13,7 @@ While custom measurements are easy to add, currently supported measurement types
 
 Please look in our `example/` directory to see how to use this module to generate experiments.
 
-Our Manhattan Simulator depends on our [https://github.com/MarineRoboticsGroup/PyFactorGraph/](PyFactorGraph) module, so
+Our Manhattan Simulator depends on our [PyFactorGraph](https://github.com/MarineRoboticsGroup/PyFactorGraph/) module, so
 you will need to install PyFactorGraph via:
 
 ```bash
