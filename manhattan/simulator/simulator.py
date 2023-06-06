@@ -147,6 +147,7 @@ class SimulationParams:
     exclude_last_n_poses_for_loop_closure: int = attr.ib(
         default=2, validator=positive_int_validator
     )
+    exclude_cur_robot_for_loop_closure: bool = attr.ib(default=False)
 
 
 class ManhattanSimulator:
@@ -291,7 +292,7 @@ class ManhattanSimulator:
         )
 
         # Add factor graph structure to hold data
-        self._factor_graph = FactorGraphData(dimension=2)
+        self._factor_graph: FactorGraphData = FactorGraphData(dimension=2)
 
         # * add these after everything else is initialized
         self.add_robots(sim_params.num_robots)
@@ -682,6 +683,10 @@ class ManhattanSimulator:
             possible_loop_closures = []
 
             # gather up list of closure candidates
+            candidate_robots = list(range(self.num_robots))
+            if self.sim_params.exclude_cur_robot_for_loop_closure:
+                candidate_robots.remove(cur_robot_id)
+
             for loop_clos_robot_id in range(self.num_robots):
 
                 # ignore the two most recent poses, as it shouldn't be
