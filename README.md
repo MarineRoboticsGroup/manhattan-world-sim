@@ -1,21 +1,25 @@
-# Manhattan-waterworld
+# Manhattan Simulator
 
-This is a repository for generating random Manhattan-World-style experiments
-with ambiguous data association, multiple robots, and range measurements between
-both robots and static beacons placed in the environment.
+This is a repository for generating random Manhattan-World-style 2D experiments. 
+
+While custom measurements are easy to add, currently supported measurement types include:
+
+- robot odometry measurements
+- pose-pose and pose-landmark loop closures (measurements are SE(2) measurements)
+- pose-pose and pose-landmark range measurements
+- ambiguous loop closures and ambiguous range measurements (the measurements above, but with uncertainty on the data association)
 
 ## Getting Started
 
-To run some sample code:
+Please look in our `example/` directory to see how to use this module to generate experiments.
 
-``` Bash
-# setup the environment (name assigned from the .yml file)
-conda create --name manhattan_sim python=3.9 numpy matplotlib
-conda activate manhattan_sim
+Our Manhattan Simulator depends on our [PyFactorGraph](https://github.com/MarineRoboticsGroup/PyFactorGraph/) module, so
+you will need to install PyFactorGraph via:
 
-# run the example code from the example directory of this repository
-cd examples
-python single_robot_random_trajectory.py
+```bash
+git clone git@github.com:MarineRoboticsGroup/PyFactorGraph.git
+cd PyFactorGraph
+pip install .
 ```
 
 ## Contributing
@@ -41,7 +45,7 @@ need to do is run the following commands:
 ``` Bash
 # install pre-commit
 pip3 install pre-commit
-pre-commit install
+pre-commit install # must run this command in the root of this repo
 ```
 
 Now, when you try to make a commit, pre-commit will run a series of tests that
