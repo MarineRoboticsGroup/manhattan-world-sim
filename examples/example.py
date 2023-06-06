@@ -6,8 +6,6 @@ sys.path.insert(0, os.path.abspath(".."))
 
 from manhattan.simulator.simulator import ManhattanSimulator, SimulationParams
 
-import numpy as np
-
 show_animation = False
 num_beacons = 1
 grid_len = 30
