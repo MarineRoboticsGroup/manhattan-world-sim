@@ -240,7 +240,6 @@ class ManhattanSimulator:
             assert len(true_pose_chain) == (self.timestep) + 1
 
     def __init__(self, sim_params: SimulationParams) -> None:
-
         # run a bunch of checks to make sure input is valid
         self.check_simulation_params(sim_params)
         np.random.seed(sim_params.seed_num)
@@ -274,18 +273,18 @@ class ManhattanSimulator:
         )
 
         # odometry measurements
-        odom_cov_x = self._sim_params.odom_x_stddev ** 2
-        odom_cov_y = self._sim_params.odom_y_stddev ** 2
-        odom_cov_theta = self._sim_params.odom_theta_stddev ** 2
+        odom_cov_x = self._sim_params.odom_x_stddev**2
+        odom_cov_y = self._sim_params.odom_y_stddev**2
+        odom_cov_theta = self._sim_params.odom_theta_stddev**2
         self._base_odometry_model = GaussOdomSensor(
             mean=np.zeros(3),
             covariance=np.diag([odom_cov_x, odom_cov_y, odom_cov_theta]),
         )
 
         # loop closures
-        loop_cov_x = self._sim_params.loop_x_stddev ** 2
-        loop_cov_y = self._sim_params.loop_y_stddev ** 2
-        loop_cov_theta = self._sim_params.loop_theta_stddev ** 2
+        loop_cov_x = self._sim_params.loop_x_stddev**2
+        loop_cov_y = self._sim_params.loop_y_stddev**2
+        loop_cov_theta = self._sim_params.loop_theta_stddev**2
         self._base_loop_closure_model = GaussLoopClosureSensor(
             mean=np.zeros(3),
             covariance=np.diag([loop_cov_x, loop_cov_y, loop_cov_theta]),
@@ -464,7 +463,7 @@ class ManhattanSimulator:
         pose_loc = (start_pose.x, start_pose.y)
         pose_theta = start_pose.theta
         self._factor_graph.add_pose_variable(
-            PoseVariable2D(start_pose.local_frame, pose_loc, pose_theta)
+            PoseVariable2D(start_pose.local_frame, pose_loc, pose_theta, self._timestep)
         )
 
         # if first robot, add prior to pin
@@ -528,7 +527,6 @@ class ManhattanSimulator:
 
         # iterate over all robots
         for robot_idx, robot in enumerate(self._robots):
-
             # get all possible vertices to move to (all adjacent vertices not
             # behind robot)
             possible_moves = self._env.get_neighboring_robot_vertices_not_behind_robot(
@@ -577,7 +575,10 @@ class ManhattanSimulator:
             cur_pose = robot.pose
             self._factor_graph.add_pose_variable(
                 PoseVariable2D(
-                    cur_pose.local_frame, (cur_pose.x, cur_pose.y), cur_pose.theta
+                    cur_pose.local_frame,
+                    (cur_pose.x, cur_pose.y),
+                    cur_pose.theta,
+                    self._timestep,
                 )
             )
             self._store_odometry_measurement(robot_idx, odom_measurement)
@@ -642,7 +643,6 @@ class ManhattanSimulator:
 
             # get all ranging to beacons
             for beacon_id in range(self.num_beacons):
-
                 beacon = self._beacons[beacon_id]
 
                 # get distance between robot and other_robot
@@ -667,7 +667,6 @@ class ManhattanSimulator:
             return
 
         for cur_robot_id in range(self.num_robots):
-
             # roll dice to see if we can get a loop closure here. If greater
             # than this value then no loop closure
             if np.random.rand() > self.sim_params.loop_closure_prob or (
@@ -688,14 +687,12 @@ class ManhattanSimulator:
                 candidate_robots.remove(cur_robot_id)
 
             for loop_clos_robot_id in range(self.num_robots):
-
                 # ignore the two most recent poses, as it shouldn't be
                 # considered for loop closures
                 candidate_pose_chain = self._groundtruth_poses[loop_clos_robot_id][
                     : -self.sim_params.exclude_last_n_poses_for_loop_closure
                 ]
                 for cand_pose in candidate_pose_chain:
-
                     # get difference between the current pose and the candidate pose
                     cand_x = cand_pose.x
                     cand_y = cand_pose.y
@@ -719,7 +716,6 @@ class ManhattanSimulator:
                     len(possible_loop_closures) > 1
                     and np.random.rand() < self.sim_params.false_loop_closure_prob
                 ):
-
                     # remove the true loop closure from the options and pick a
                     # new one for the measured data association
                     possible_loop_closures.remove(true_loop_closure_pose)
