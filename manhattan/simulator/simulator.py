@@ -51,6 +51,7 @@ from py_factor_graph.factor_graph import FactorGraphData
 from py_factor_graph.variables import PoseVariable2D, LandmarkVariable2D
 from py_factor_graph.measurements import (
     PoseMeasurement2D,
+    PoseToLandmarkMeasurement2D,
     FGRangeMeasurement,
     AmbiguousPoseMeasurement2D,
     AmbiguousFGRangeMeasurement,
@@ -164,8 +165,6 @@ class ManhattanSimulator:
             sim_params (SimulationParams): the simulation parameters to check
 
         """
-        if sim_params.groundtruth_measurements:
-            print("WARNING: groundtruth_measurements is set to True. ")
 
         # check input arguments for simulation parameters
 
@@ -380,6 +379,7 @@ class ManhattanSimulator:
         self._move_robots_randomly()
         self._update_range_measurements()
         self._update_loop_closures()
+        # self._update_pose_to_landmark_measurements()
 
         # make sure everything was filled in correctly
         self.check_simulation_state()
@@ -476,6 +476,7 @@ class ManhattanSimulator:
                 pose_theta,
                 translation_precision,
                 rotation_precision,
+                timestamp=self._timestep,
             )
             self._factor_graph.add_pose_prior(pose_prior)
 
@@ -650,7 +651,9 @@ class ManhattanSimulator:
 
                 if dist < self.sim_params.range_sensing_radius:
                     if np.random.random() < self.sim_params.range_sensing_prob:
-                        measure = cur_robot.range_measurement_from_dist(dist)
+                        measure = cur_robot.range_measurement_from_dist(
+                            dist, self.sim_params.groundtruth_measurements
+                        )
                         self._add_robot_to_beacon_range_measurement(
                             cur_robot_id, beacon_id, measure
                         )
@@ -686,6 +689,7 @@ class ManhattanSimulator:
             if self.sim_params.exclude_cur_robot_for_loop_closure:
                 candidate_robots.remove(cur_robot_id)
 
+            candidate_robots = [cur_robot_id]
             for loop_clos_robot_id in range(self.num_robots):
                 # ignore the two most recent poses, as it shouldn't be
                 # considered for loop closures
@@ -762,6 +766,67 @@ class ManhattanSimulator:
                         loop_closure.rotation_precision,
                     )
                     self._factor_graph.add_loop_closure(measure)
+
+                self._num_loop_closures += 1
+
+    def _update_pose_to_landmark_measurements(self) -> None:
+        """Does the same as _update_loop_closures but for pose to landmark"""
+        # return
+
+        # can definitely make this faster using numpy or something to
+        # compute the distances between all pairs of poses
+        if self._num_loop_closures >= self.sim_params.max_num_loop_closures:
+            return
+
+        for cur_robot_id in range(self.num_robots):
+            # roll dice to see if we can get a loop closure here. If greater
+            # than this value then no loop closure
+            if np.random.rand() > self.sim_params.loop_closure_prob or (
+                len(self._groundtruth_poses[cur_robot_id]) - 1
+                in self._sim_params.no_loop_pose_idx
+            ):
+                continue
+
+            cur_robot = self._robots[cur_robot_id]
+            cur_pose = cur_robot.pose
+            cur_x = cur_pose.x
+            cur_y = cur_pose.y
+            possible_loop_closures: List[Beacon] = []
+
+            for beacon in self._beacons:
+                # get difference between the current pose and the candidate pose
+                cand_x, cand_y = beacon.position.array
+                diff_x = abs(cur_x - cand_x)
+                diff_y = abs(cur_y - cand_y)
+                x_too_far = diff_x > self.sim_params.loop_closure_radius
+                y_too_far = diff_y > self.sim_params.loop_closure_radius
+
+                # approximate the radius check just by a square
+                if x_too_far or y_too_far:
+                    continue
+                else:
+                    possible_loop_closures.append(beacon)
+
+            if len(possible_loop_closures) > 0:
+                loop_closure_beacon = choice(possible_loop_closures)
+
+                # get the transformation from this pose to the beacon's location (a point)
+                rel_transform = cur_pose.transform_base_point_to_local(
+                    loop_closure_beacon.position
+                )
+
+                measurement = PoseToLandmarkMeasurement2D(
+                    pose_name=cur_pose.local_frame,
+                    landmark_name=loop_closure_beacon.name,
+                    x=rel_transform.x,
+                    y=rel_transform.y,
+                    translation_precision=1.0,
+                    timestamp=float(self.timestep),
+                )
+
+                # fill in loop closure in factor graph
+                self._factor_graph.add_pose_landmark_measurement(measurement)
+                print(f"Warning: adding noiseless pose to landmark measurement")
 
                 self._num_loop_closures += 1
 

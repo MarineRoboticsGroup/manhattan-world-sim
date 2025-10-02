@@ -88,7 +88,7 @@ class Agent:
             RangeMeasurement: the range measurement from this distance
         """
         if gt_measure:
-            return RangeMeasurement(dist, dist, 0.0, 0.1, self.timestep)
+            return RangeMeasurement(dist, dist, 0.0, 1.0, self.timestep)
 
         return self._range_model.get_range_measurement(dist, self.timestep)
 

@@ -30,6 +30,7 @@ class RangeMeasurement:
         assert isinstance(stddev, float)
         assert stddev >= 0.0
         assert isinstance(timestamp, int)
+        assert timestamp is not None
 
         self._true_distance = true_distance
         self._measured_distance = measured_dist
